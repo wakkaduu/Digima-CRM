@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BankAccount {
+  BDO
+  UnionBank
+  Digima
+  HappyMeal @map("Happy Meal")
+  Cash
+}
+
+enum PaymentStatus {
+  pending
+  approved
+  rejected
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  customerName      String        @map("customer_name")
+  qboEstimateId     String        @map("qbo_estimate_id")
+  qboEstimateNumber String?       @map("qbo_estimate_number")
+  amountSubmitted   Decimal       @map("amount_submitted") @db.Decimal(14, 2)
+  finalAmount       Decimal?      @map("final_amount") @db.Decimal(14, 2)
+  bankDepositedTo   BankAccount   @map("bank_deposited_to")
+  proofImageUrl     String        @map("proof_image_url")
+  status            PaymentStatus @default(pending)
+  submittedBy       String        @map("submitted_by")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  referenceNo       String?       @map("reference_no")
+  receivedOn        DateTime?     @map("received_on") @db.Date // day the money was received (as entered by Sales)
+  receivedBy        String?       @map("received_by") // name of who received it (snapshot)
+  receivedById      String?       @map("received_by_id") @db.Uuid
+  receivedByUser    User?         @relation("PaymentReceivedBy", fields: [receivedById], references: [id])
+
+  // --- Additions beyond your spec (needed for the QBO push & audit trail) ---
+  qboCustomerId   String?   @map("qbo_customer_id")
+  qboPaymentId    String?   @unique @map("qbo_payment_id") // set after successful QBO push; prevents double-posting
+  qboDepositId    String?   @map("qbo_deposit_id")
+  approvedBy      String?   @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  rejectionReason String?   @map("rejection_reason")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // User 
+  submittedById   String?   @map("submitted_by_id") @db.Uuid
+  submittedByUser User?     @relation("PaymentSubmittedBy", fields: [submittedById], references: [id])
+  proofPublicId   String?   @map("proof_public_id")
+  salesSeenAt     DateTime? @map("sales_seen_at")
+
+  @@index([submittedById, status])
+  @@index([receivedById])
+  @@index([status, createdAt])
+  @@index([qboEstimateId])
+  @@index([bankDepositedTo, referenceNo])
+  @@map("payments")
+}
+
+// Stores the QBO OAuth tokens so they survive server restarts.
+// QBO access tokens last 1 hour; refresh tokens rotate, so they must be persisted.
+model QboToken {
+  id                    Int      @id @default(1) // single-row table (one QBO company)
+  realmId               String   @map("realm_id")
+  accessToken           String   @map("access_token")
+  refreshToken          String   @map("refresh_token")
+  accessTokenExpiresAt  DateTime @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime @map("refresh_token_expires_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("qbo_tokens")
+}
+
+enum UserRole {
+  sales
+  admin
+}
+
+model User {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String
+  email              String   @unique
+  passwordHash       String   @map("password_hash")
+  role               UserRole
+  active             Boolean  @default(true)
+  mustChangePassword Boolean  @default(true) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  submissions Payment[] @relation("PaymentSubmittedBy")
+  receipts    Payment[] @relation("PaymentReceivedBy")
+
+  @@map("users")
+}
