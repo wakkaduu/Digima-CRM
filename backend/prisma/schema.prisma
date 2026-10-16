@@ -11,7 +11,7 @@ enum BankAccount {
   BDO
   UnionBank
   Digima
-  HappyMeal @map("Happy Meal")
+  HappyMed  @map("Happy Med")
   Cash
 }
 
@@ -55,10 +55,10 @@ model Payment {
   salesSeenAt     DateTime? @map("sales_seen_at")
 
   // Who approved / rejected it (names alone are not unique). Needed for the 30-second reject undo.
-  reviewedById     String? @map("reviewed_by_id") @db.Uuid
-  reviewedByUser   User?   @relation("PaymentReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById   String? @map("reviewed_by_id") @db.Uuid
+  reviewedByUser User?   @relation("PaymentReviewedBy", fields: [reviewedById], references: [id])
   // Client-generated key (Idempotency-Key header) so a retried submit cannot create a second payment.
-  idempotencyKey   String? @map("idempotency_key")
+  idempotencyKey String? @map("idempotency_key")
 
   @@unique([submittedById, idempotencyKey])
   @@index([submittedById, status])
@@ -72,14 +72,14 @@ model Payment {
 // Stores the QBO OAuth tokens so they survive server restarts.
 // QBO access tokens last 1 hour; refresh tokens rotate, so they must be persisted.
 model QboToken {
-  id                    Int      @id @default(1) // single-row table (one QBO company)
-  realmId               String   @map("realm_id")
-  accessToken           String   @map("access_token")
-  refreshToken          String   @map("refresh_token")
-  accessTokenExpiresAt  DateTime @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime @map("refresh_token_expires_at")
+  id                    Int       @id @default(1) // single-row table (one QBO company)
+  realmId               String    @map("realm_id")
+  accessToken           String    @map("access_token")
+  refreshToken          String    @map("refresh_token")
+  accessTokenExpiresAt  DateTime  @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime  @map("refresh_token_expires_at")
   lastVerifiedAt        DateTime? @map("last_verified_at") // last time Intuit confirmed the connection works
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@map("qbo_tokens")
 }
