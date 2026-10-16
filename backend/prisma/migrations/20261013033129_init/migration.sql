@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "BankAccount" AS ENUM ('BDO', 'UnionBank', 'Digima', 'Happy Meal');
+CREATE TYPE "BankAccount" AS ENUM ('BDO', 'UnionBank', 'Digima', 'Happy Med');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('pending', 'approved', 'rejected');

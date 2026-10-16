@@ -11,7 +11,7 @@ const DEPOSIT_ACCOUNT_BY_BANK: Record<string, string | undefined> = {
     BDO: env.QBO_DEPOSIT_ACCOUNT_BDO,
     UnionBank: env.QBO_DEPOSIT_ACCOUNT_UNIONBANK,
     Digima: env.QBO_DEPOSIT_ACCOUNT_DIGIMA,
-    HappyMeal: env.QBO_DEPOSIT_ACCOUNT_HAPPYMEAL,
+    HappyMed: env.QBO_DEPOSIT_ACCOUNT_HAPPYMED,
     Cash: env.QBO_DEPOSIT_ACCOUNT_CASH,
 };
 

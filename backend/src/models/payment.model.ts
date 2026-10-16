@@ -1,5 +1,9 @@
 import type { BankAccount, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import type { ListQuery, SortField } from '../validators/payment.validator';
+
+/** Time an admin has to undo a rejection. */
+export const REJECT_UNDO_WINDOW_MS = 30_000;
 
 const MINE_SELECT = {
     id: true,
@@ -99,3 +103,98 @@ export const markApprovedAsSeen = (userId: string) =>
         },
         data: { salesSeenAt: new Date() },
     });
+
+/* ── Listing (UI-5.1) ── */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Day boundaries are Manila midnight (UTC+8, no daylight saving).
+const manilaStart = (ymd: string) => new Date(`${ymd}T00:00:00+08:00`);
+
+/** Filters + role scope -> Prisma where. Sales are always limited to their own rows. */
+export function buildListWhere(q: ListQuery, scope: { role: 'admin' | 'sales'; userId: string }): Prisma.PaymentWhereInput {
+    const and: Prisma.PaymentWhereInput[] = [];
+    if (scope.role === 'sales') and.push({ submittedById: scope.userId });
+    else if (q.rep) and.push({ submittedById: q.rep });
+    if (q.status?.length) and.push({ status: { in: q.status } });
+    if (q.bank) and.push({ bankDepositedTo: q.bank as BankAccount });
+    if (q.from) and.push({ createdAt: { gte: manilaStart(q.from) } });
+    if (q.to) and.push({ createdAt: { lt: new Date(manilaStart(q.to).getTime() + DAY_MS) } }); // inclusive of the "to" day
+    if (q.q) {
+        const contains = { contains: q.q, mode: 'insensitive' as const };
+        and.push({
+            OR: [
+                { customerName: contains },
+                { qboEstimateNumber: contains },
+                ...(scope.role === 'admin' ? [{ referenceNo: contains }, { submittedBy: contains }] : []),
+            ],
+        });
+    }
+    return and.length ? { AND: and } : {};
+}
+
+export async function search(q: ListQuery, scope: { role: 'admin' | 'sales'; userId: string }) {
+    const where = buildListWhere(q, scope);
+    const [field, dir] = q.sort.split(':') as [SortField, 'asc' | 'desc'];
+    const [items, total] = await prisma.$transaction([
+        prisma.payment.findMany({
+            where,
+            // `id` breaks ties so pages never repeat or skip rows.
+            orderBy: [{ [field]: dir }, { id: 'asc' }],
+            skip: (q.page - 1) * q.pageSize,
+            take: q.pageSize,
+        }),
+        prisma.payment.count({ where }),
+    ]);
+    return { items, total };
+}
+
+/* ── Badges, recents ── */
+
+export const countPending = () => prisma.payment.count({ where: { status: 'pending' } });
+
+export const countUnseen = (userId: string) =>
+    prisma.payment.count({ where: { submittedById: userId, status: { in: ['approved', 'rejected'] }, salesSeenAt: null } });
+
+/** The estimates this user submitted payments for most recently (newest first, no repeats). */
+export async function recentEstimateIds(userId: string, take = 5) {
+    const rows = await prisma.payment.findMany({
+        where: { submittedById: userId },
+        orderBy: { createdAt: 'desc' },
+        distinct: ['qboEstimateId'],
+        take,
+        select: { qboEstimateId: true },
+    });
+    return rows.map((r) => r.qboEstimateId);
+}
+
+/* ── Idempotent submit ── */
+
+export const findByIdempotencyKey = (userId: string, key: string) =>
+    prisma.payment.findUnique({ where: { submittedById_idempotencyKey: { submittedById: userId, idempotencyKey: key } } });
+
+/* ── Reject undo ── */
+
+/**
+ * Puts a rejected payment back in the queue, but only for the admin who rejected it, within the undo window,
+ * and while nothing was posted to QuickBooks. One atomic statement, so two clicks cannot both win.
+ */
+export async function undoReject(id: string, reviewerId: string) {
+    const { count } = await prisma.payment.updateMany({
+        where: {
+            id,
+            status: 'rejected',
+            reviewedById: reviewerId,
+            qboPaymentId: null,
+            approvedAt: { gte: new Date(Date.now() - REJECT_UNDO_WINDOW_MS) },
+        },
+        data: {
+            status: 'pending',
+            rejectionReason: null,
+            approvedBy: null,
+            approvedAt: null,
+            reviewedById: null,
+            salesSeenAt: null,
+        },
+    });
+    return count;
+};

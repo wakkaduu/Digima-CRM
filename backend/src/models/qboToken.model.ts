@@ -12,3 +12,7 @@ export const save = (data: Omit<Prisma.QboTokenCreateInput, 'id'>) =>
         create: { id: SINGLETON_ID, ...data },
         update: data,
     });
+
+/** Records that Intuit just confirmed the stored connection works. No-op if QuickBooks was never connected. */
+export const markVerified = () =>
+    prisma.qboToken.updateMany({ where: { id: SINGLETON_ID }, data: { lastVerifiedAt: new Date() } });

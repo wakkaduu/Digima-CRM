@@ -5,10 +5,16 @@ import { api, ApiError } from '../api/client';
 import { homePath, ME_KEY, useMe } from '../api/auth';
 import { Message } from '../components/Message';
 import { TextField } from '../components/Field';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Checkbox } from '../components/ui/controls';
+import { PageHeader } from '../components/ui/PageHeader';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 type Errors = Partial<Record<'current' | 'next' | 'confirm', string>>;
 
 export function PasswordPage() {
+  useDocumentTitle('Change password');
   const { data: me } = useMe();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -62,15 +68,16 @@ export function PasswordPage() {
   }
 
   return (
-    <main className="page page-narrow">
-      <h1>Change password</h1>
+    <div className="max-w-[480px]">
+      <PageHeader title="Change password" />
       {me?.mustChangePassword && !done && (
-        <div className="msg msg-info">For security, set your own password before you continue.</div>
+        <Message type="info">For security, set your own password before you continue.</Message>
       )}
       {message && <Message type={done ? 'ok' : 'error'} focus>{message}</Message>}
 
       {!done && (
-        <form className="panel" noValidate onSubmit={onSubmit}>
+        <Card>
+        <form noValidate onSubmit={onSubmit}>
           <TextField
             id="current"
             label="Current password"
@@ -99,14 +106,15 @@ export function PasswordPage() {
             error={errors.confirm}
             onChange={(e) => (setConfirm(e.target.value), clear('confirm'))}
           />
-          <label className="check">
-            <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} /> Show passwords
-          </label>
-          <button className="btn btn-primary btn-block mt-2" disabled={busy}>
+          <Checkbox checked={showPw} onChange={(e) => setShowPw(e.target.checked)}>
+            Show passwords
+          </Checkbox>
+          <Button type="submit" variant="primary" block loading={busy} className="mt-2">
             {busy ? 'Saving…' : 'Save new password'}
-          </button>
+          </Button>
         </form>
+        </Card>
       )}
-    </main>
+    </div>
   );
 }

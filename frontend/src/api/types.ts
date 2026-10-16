@@ -58,8 +58,47 @@ export interface PendingPayment {
   referenceNo: string | null;
   receivedOn: string | null;
   receivedBy: string | null;
+  submittedById: string | null;
   proofImageUrl: string;
+  /** Resized copy of the receipt for list and review views (full size is `proofImageUrl`). */
+  thumbUrl: string;
   qboPartiallyPosted: boolean;
+}
+
+/** A row from GET /api/payments as an admin sees it (history). */
+export interface HistoryPayment extends PendingPayment {
+  receivedById: string | null;
+  rejectionReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+}
+
+export interface AuditEvent {
+  type: 'submitted' | 'approved' | 'rejected';
+  at: string;
+  by: string | null;
+  note?: string | null;
+}
+
+/** GET /api/payments/:id (admin view; `qbo` is admin-only). */
+export interface PaymentDetail extends HistoryPayment {
+  fee: number | null;
+  events: AuditEvent[];
+  qbo?: { paymentId: string | null; depositId: string | null; customerId: string | null };
+}
+
+export interface BankOption {
+  /** What to send as `bank` when submitting. */
+  id: string;
+  /** What payments report in `bankDepositedTo`. */
+  key: string;
+  label: string;
+  referenceNumber: 'optional' | 'none';
+}
+
+export interface BankConfig {
+  banks: BankOption[];
+  defaultFeePercent: number;
 }
 
 export interface Receiver {
@@ -73,7 +112,13 @@ export interface ApproveResult {
 
 export interface QboStatus {
   connected: boolean;
+  /** A connection exists but has expired: an admin must reconnect. */
+  needsReauth?: boolean;
   realmId?: string;
   companyName?: string;
   verifyError?: string;
+  /** Last time Intuit confirmed the connection works. */
+  lastVerifiedAt?: string | null;
+  refreshTokenExpiresAt?: string;
+  expiresInDays?: number;
 }

@@ -54,6 +54,13 @@ model Payment {
   proofPublicId   String?   @map("proof_public_id")
   salesSeenAt     DateTime? @map("sales_seen_at")
 
+  // Who approved / rejected it (names alone are not unique). Needed for the 30-second reject undo.
+  reviewedById     String? @map("reviewed_by_id") @db.Uuid
+  reviewedByUser   User?   @relation("PaymentReviewedBy", fields: [reviewedById], references: [id])
+  // Client-generated key (Idempotency-Key header) so a retried submit cannot create a second payment.
+  idempotencyKey   String? @map("idempotency_key")
+
+  @@unique([submittedById, idempotencyKey])
   @@index([submittedById, status])
   @@index([receivedById])
   @@index([status, createdAt])
@@ -71,6 +78,7 @@ model QboToken {
   refreshToken          String   @map("refresh_token")
   accessTokenExpiresAt  DateTime @map("access_token_expires_at")
   refreshTokenExpiresAt DateTime @map("refresh_token_expires_at")
+  lastVerifiedAt        DateTime? @map("last_verified_at") // last time Intuit confirmed the connection works
   updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@map("qbo_tokens")
@@ -94,6 +102,7 @@ model User {
 
   submissions Payment[] @relation("PaymentSubmittedBy")
   receipts    Payment[] @relation("PaymentReceivedBy")
+  reviews     Payment[] @relation("PaymentReviewedBy")
 
   @@map("users")
 }

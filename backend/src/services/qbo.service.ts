@@ -168,19 +168,28 @@ export async function getCompanyInfo() {
 
 export async function getConnectionStatus(): Promise<{
     connected: boolean;
+    /** A token exists but its refresh token has expired: an admin must reconnect. */
+    needsReauth: boolean;
     realmId?: string;
     accessTokenExpiresAt?: Date;
     refreshTokenExpiresAt?: Date;
+    /** Whole days until the connection lapses (0 = today). The refresh token is renewed on use, so this rarely shrinks. */
+    expiresInDays?: number;
+    lastVerifiedAt?: Date | null;
     companyName?: string;
     verifyError?: string;
 }> {
     const row = await qboTokenModel.get();
-    if (!row) return { connected: false };
+    if (!row) return { connected: false, needsReauth: false };
+    const connected = row.refreshTokenExpiresAt > new Date();
     return {
-        connected: row.refreshTokenExpiresAt > new Date(),
+        connected,
+        needsReauth: !connected,
         realmId: row.realmId,
         accessTokenExpiresAt: row.accessTokenExpiresAt,
         refreshTokenExpiresAt: row.refreshTokenExpiresAt,
+        expiresInDays: connected ? Math.floor((row.refreshTokenExpiresAt.getTime() - Date.now()) / 86_400_000) : 0,
+        lastVerifiedAt: row.lastVerifiedAt,
     };
 }
 
@@ -262,18 +271,25 @@ async function attachPortalTotals(estimates: EstimateDto[]) {
     }));
 }
 
+async function loadEstimates(forceRefresh: boolean) {
+    const fresh = Date.now() - estimateCache.at < ESTIMATE_CACHE_TTL_MS;
+    if (!forceRefresh && fresh && estimateCache.data) return estimateCache.data;
+    const data = (await fetchAllOpenEstimates()).map(toEstimateDto);
+    estimateCache = { at: Date.now(), data };
+    return data;
+}
+
+/**
+ * Open estimates, optionally filtered by `search` (customer name or estimate number) and capped at `limit`.
+ * The cap is applied before the portal totals are looked up, so a search-as-you-type call stays cheap.
+ * `total` is the number of matches before the cap.
+ */
 export async function getOpenEstimates({
     search,
     forceRefresh = false,
-}: { search?: string; forceRefresh?: boolean } = {}) {
-    const fresh = Date.now() - estimateCache.at < ESTIMATE_CACHE_TTL_MS;
-    let base: EstimateDto[];
-    if (!forceRefresh && fresh && estimateCache.data) {
-        base = estimateCache.data;
-    } else {
-        base = (await fetchAllOpenEstimates()).map(toEstimateDto);
-        estimateCache = { at: Date.now(), data: base };
-    }
+    limit,
+}: { search?: string; forceRefresh?: boolean; limit?: number } = {}) {
+    const base = await loadEstimates(forceRefresh);
 
     let list = base;
     if (search) {
@@ -284,7 +300,16 @@ export async function getOpenEstimates({
                 (e.customerName || '').toLowerCase().includes(q)
         );
     }
-    return attachPortalTotals(list);
+    const total = list.length;
+    if (limit) list = list.slice(0, limit);
+    return { total, estimates: await attachPortalTotals(list) };
+}
+
+/** Pickable estimates by id, in the order given (ids that are no longer pickable are skipped). */
+export async function getEstimatesByIds(ids: string[]) {
+    const byId = new Map((await loadEstimates(false)).map((e) => [e.id, e]));
+    const found = ids.map((id) => byId.get(id)).filter((e): e is EstimateDto => Boolean(e));
+    return attachPortalTotals(found);
 }
 
 /* ───────────────────────── Single estimate (used from Phase 3) ───────────────────────── */

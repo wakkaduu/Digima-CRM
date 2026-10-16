@@ -2,7 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { homePath, useMe } from '../api/auth';
 import type { Role } from '../api/types';
 import { Message } from './Message';
-import { Topbar } from './Topbar';
+import { AppShell } from './shell/AppShell';
+import { Skeleton } from './ui/States';
 
 /**
  * Route guard + app shell: redirects to login / password change as needed.
@@ -12,12 +13,19 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
   const { data: user, isPending, error } = useMe();
   const { pathname } = useLocation();
 
-  if (isPending) return <p className="page hint">Loading…</p>;
+  if (isPending) {
+    return (
+      <div role="status" aria-label="Loading" className="mx-auto max-w-[720px] space-y-3 p-6">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
   if (error) {
     return (
-      <main className="page">
+      <div className="mx-auto max-w-[720px] p-6">
         <Message>{error.message}</Message>
-      </main>
+      </div>
     );
   }
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(pathname)}`} replace />;
@@ -25,9 +33,8 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
   if (roles && !roles.includes(user.role)) return <Navigate to={homePath(user)} replace />;
 
   return (
-    <>
-      <Topbar user={user} />
+    <AppShell user={user}>
       <Outlet />
-    </>
+    </AppShell>
   );
 }

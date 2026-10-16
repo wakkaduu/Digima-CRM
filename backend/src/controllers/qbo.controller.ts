@@ -4,14 +4,18 @@ import env from '../config/env';
 import asyncHandler from '../utils/asyncHandler';
 import HttpError from '../utils/HttpError';
 import * as qbo from '../services/qbo.service';
+import * as qboTokenModel from '../models/qboToken.model';
+import { estimateSearchSchema } from '../validators/payment.validator';
 
-// GET /api/qbo/estimates?q=<customer or estimate #>&refresh=true
+// GET /api/qbo/estimates?q=<customer or estimate #>&limit=<1-50>&refresh=true
+// Without `limit` every match is returned (the setup page's connection test relies on that).
 export const listEstimates = asyncHandler(async (req, res) => {
-    const estimates = await qbo.getOpenEstimates({
-        search: typeof req.query.q === 'string' ? req.query.q : undefined,
-        forceRefresh: req.query.refresh === 'true',
-    });
-    res.json({ count: estimates.length, estimates });
+    const parsed = estimateSearchSchema.safeParse(req.query);
+    if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
+    const { q, limit, refresh } = parsed.data;
+
+    const { estimates, total } = await qbo.getOpenEstimates({ search: q, limit, forceRefresh: refresh === 'true' });
+    res.json({ count: estimates.length, total, estimates });
 });
 
 /* ── QuickBooks OAuth (admin only) ── */
@@ -54,8 +58,11 @@ export const status = asyncHandler(async (req, res) => {
         try {
             const info = await qbo.getCompanyInfo();
             status.companyName = info.CompanyName;
+            await qboTokenModel.markVerified();
+            status.lastVerifiedAt = new Date();
         } catch (err: any) {
             status.verifyError = err.message;
+            if (err.details?.code === 'QBO_REAUTH_REQUIRED') status.needsReauth = true;
         }
     }
     res.json(status);

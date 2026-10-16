@@ -16,7 +16,8 @@
     "prisma:studio": "prisma studio",
     "user:create": "tsx scripts/create-user.ts",
     "build": "prisma generate && tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

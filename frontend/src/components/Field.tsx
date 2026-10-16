@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
+import { Input } from './ui/controls';
 
 interface FieldProps {
   id: string;
@@ -12,16 +13,16 @@ interface FieldProps {
 export function Field({ id, label, hint, error, children }: FieldProps) {
   const ids = [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ');
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
+    <div className="mb-4">
+      <label htmlFor={id} className="mb-1 block font-semibold">{label}</label>
       {children({ ...(error ? { 'aria-invalid': true as const } : {}), ...(ids ? { 'aria-describedby': ids } : {}) })}
       {hint ? (
-        <p id={`${id}-hint`} className="hint">
+        <p id={`${id}-hint`} className="mt-1 text-small text-text-muted">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} className="field-error">
+        <p id={`${id}-error`} className="mt-1 text-small font-semibold text-danger">
           {error}
         </p>
       ) : null}
@@ -39,7 +40,7 @@ type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
 export function TextField({ id, label, hint, error, ...input }: TextFieldProps) {
   return (
     <Field id={id} label={label} hint={hint} error={error}>
-      {(aria) => <input id={id} className="input" {...input} {...aria} />}
+      {(aria) => <Input id={id} {...input} {...aria} />}
     </Field>
   );
 }

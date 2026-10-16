@@ -44,13 +44,14 @@ describe('RequireAuth', () => {
     renderWithProviders(tree, '/');
     expect(await screen.findByText('Admin screen')).toBeInTheDocument();
     expect(screen.queryByText('Home screen')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Submit payment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^Submit/ })).not.toBeInTheDocument();
   });
 
   it('shows the app shell with the right navigation for the role', async () => {
     mockApi({ 'GET /api/auth/me': [200, { user: sales }] });
     renderWithProviders(tree, '/');
-    expect(await screen.findByRole('link', { name: 'Submit payment' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Pending approvals' })).not.toBeInTheDocument();
+    // Phone layout (jsdom has no media queries): the tab bar link is named by its visible text.
+    expect(await screen.findByRole('link', { name: /^Submit/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^Review/ })).not.toBeInTheDocument();
   });
 });

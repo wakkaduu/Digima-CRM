@@ -1,0 +1,53 @@
+import http from 'node:http';
+const hoursAgo = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+const users = {
+  admin: { id: 'a1', name: 'Ana Admin', email: 'ana@x.co', role: 'admin', mustChangePassword: false },
+  sales: { id: 's1', name: 'Sam Reyes', email: 'sam@x.co', role: 'sales', mustChangePassword: false },
+};
+const LONG = 'Extraordinarily Long Customer Name Incorporated of the Philippines and Southeast Asia';
+const pend = (i, o = {}) => ({
+  id: `p${i}`, customerName: i === 2 ? LONG : ['Acme Corp', 'Beta Ltd', 'Gamma Inc', 'Delta LLC', 'Echo Trading', 'Foxtrot Co'][i % 6],
+  qboEstimateId: String(100 + i), qboEstimateNumber: String(1000 + i), amountSubmitted: String(1500 * (i + 1)) + '.00', finalAmount: null,
+  bankDepositedTo: ['BDO', 'UnionBank', 'Digima', 'HappyMed', 'Cash'][i % 5], status: 'pending', createdAt: hoursAgo(3 + i * 11), submittedBy: ['Sam Reyes', 'Tina Lopez'][i % 2],
+  submittedById: ['s1', 's2'][i % 2], referenceNo: i % 5 === 4 ? null : 'REF' + (10000 + i), receivedOn: '2026-10-15', receivedBy: 'Sam Reyes',
+  proofImageUrl: `/api/payments/p${i}/receipt`, thumbUrl: `/api/payments/p${i}/receipt?w=800`, qboPartiallyPosted: false, ...o,
+});
+const pending = [0, 1, 2, 3, 4, 5].map((i) => pend(i, i === 3 ? { qboPartiallyPosted: true, finalAmount: '5,900.00'.replace(',', '') } : {}));
+const mine = Array.from({ length: 30 }, (_, i) => ({
+  id: `m${i}`, customerName: i === 2 ? LONG : ['Acme Corp', 'Beta Ltd', 'Gamma Inc'][i % 3], qboEstimateId: String(i), qboEstimateNumber: String(2000 + i),
+  amountSubmitted: String(900 + i * 250) + '.00', finalAmount: null, bankDepositedTo: ['BDO', 'UnionBank', 'Cash'][i % 3], status: ['pending', 'approved', 'rejected'][i % 3],
+  rejectionReason: i % 3 === 2 ? 'Receipt is unclear, please send a sharper screenshot of the whole page.' : null, createdAt: hoursAgo(i * 7 + 1), receivedOn: '2026-10-14', receivedBy: 'Sam Reyes', unseen: i < 3, thumbUrl: '',
+}));
+const history = Array.from({ length: 12 }, (_, i) => pend(20 + i, { status: i % 4 === 0 ? 'rejected' : 'approved', finalAmount: '1000.00', rejectionReason: i % 4 === 0 ? 'Wrong amount' : null, reviewedBy: 'Ana Admin', reviewedAt: hoursAgo(i + 1), createdAt: hoursAgo(30 + i * 5), receivedById: 's1' }));
+const est = (i, n) => ({ id: String(i), docNumber: String(1000 + i), customerName: n, totalAmount: 25000 + i * 1000, txnDate: '2026-10-01', expirationDate: null, status: 'Accepted', email: null, pendingAmount: 1000, approvedAmount: 2000 });
+const estimates = [est(1, 'Acme Corp'), est(2, LONG), est(3, 'Acme Holdings'), est(4, 'Beta Ltd')];
+const banks = { banks: ['BDO', 'UnionBank', 'Digima', 'Happy Med', 'Cash'].map((l) => ({ id: l, key: l.replace(' ', ''), label: l, referenceNumber: l === 'Cash' ? 'none' : 'optional' })), defaultFeePercent: 1.5 };
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="#fff"/><rect x="20" y="20" width="560" height="860" fill="none" stroke="#888"/><text x="40" y="80" font-size="32" font-family="sans-serif">BANK TRANSFER RECEIPT</text><text x="40" y="140" font-size="24" font-family="sans-serif">PHP 2,500.00  Ref 12345678</text></svg>`;
+
+const send = (res, code, body, type = 'application/json') => { res.writeHead(code, { 'Content-Type': type }); res.end(type === 'application/json' ? JSON.stringify(body) : body); };
+http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://x'); const p = url.pathname; const role = /role=(admin|sales)/.exec(req.headers.cookie || '')?.[1];
+  const user = role && users[role];
+  const delay = Number(/delay=(\d+)/.exec(req.headers.cookie || '')?.[1] || 0);
+  const go = () => {
+    if (p === '/api/auth/me') return send(res, 200, { user: user ?? null });
+    if (p === '/api/auth/login') return send(res, 200, { user: users.sales });
+    if (!user) return send(res, 401, { error: { message: 'Please log in first' } });
+    if (p === '/api/payments/counts') return send(res, 200, role === 'admin' ? { pending: pending.length } : { unseen: 3 });
+    if (p === '/api/payments/pending') return send(res, 200, { count: pending.length, payments: pending });
+    if (p === '/api/payments/mine') return send(res, 200, { payments: mine, unseenCount: 3 });
+    if (p === '/api/payments' ) return send(res, 200, { items: history, total: 40, page: 1, pageSize: 25 });
+    if (p === '/api/payments/receivers') return send(res, 200, { receivers: [{ id: 's1', name: 'Sam Reyes' }, { id: 's2', name: 'Tina Lopez' }] });
+    if (p === '/api/payments/recent-estimates') return send(res, 200, { estimates: estimates.slice(0, 2) });
+    if (p === '/api/config/banks') return send(res, 200, banks);
+    if (p === '/api/qbo/estimates') { const q = (url.searchParams.get('q') || '').toLowerCase(); const l = Number(url.searchParams.get('limit') || 99); const r = estimates.filter((e) => !q || e.customerName.toLowerCase().includes(q) || e.docNumber.includes(q)); return send(res, 200, { count: Math.min(l, r.length), total: r.length, estimates: r.slice(0, l) }); }
+    if (p === '/api/auth/qbo/status') return send(res, 200, { connected: true, needsReauth: false, realmId: '9130', companyName: 'Digima Inc', lastVerifiedAt: hoursAgo(1), refreshTokenExpiresAt: new Date(Date.now() + 98 * 864e5).toISOString(), expiresInDays: 98 });
+    if (/^\/api\/payments\/[^/]+\/receipt$/.test(p)) return send(res, 200, svg, 'image/svg+xml');
+    if (p === '/api/payments/submit' && req.method === 'POST') { req.resume(); return req.on('end', () => send(res, 201, { payment: { id: 'new', status: 'pending' } })); }
+    const m = /^\/api\/payments\/([^/]+)$/.exec(p);
+    if (m && req.method === 'GET') { const row = [...history, ...pending].find((x) => x.id === m[1]); return row ? send(res, 200, { payment: { ...row, fee: 13.5, events: [{ type: 'submitted', at: row.createdAt, by: row.submittedBy }, ...(row.status !== 'pending' ? [{ type: row.status, at: row.reviewedAt, by: 'Ana Admin', note: row.rejectionReason }] : [])], qbo: { paymentId: '77', depositId: '78', customerId: '5' } } }) : send(res, 404, { error: { message: 'Payment not found' } }); }
+    send(res, 404, { error: { message: 'no mock for ' + req.method + ' ' + p } });
+  };
+  delay ? setTimeout(go, delay) : go();
+}).listen(3100, () => console.log('mock api on 3100'));

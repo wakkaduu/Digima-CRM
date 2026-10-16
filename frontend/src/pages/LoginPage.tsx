@@ -6,10 +6,15 @@ import { homePath, ME_KEY, safeNext, useMe } from '../api/auth';
 import type { User } from '../api/types';
 import { Message } from '../components/Message';
 import { TextField } from '../components/Field';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Checkbox } from '../components/ui/controls';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 export function LoginPage() {
+  useDocumentTitle('Log in');
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -58,18 +63,15 @@ export function LoginPage() {
   }
 
   return (
-    <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <span className="brand">Payment Portal</span>
-        </div>
-      </header>
+    <main className="mx-auto flex min-h-dvh w-full max-w-[420px] flex-col justify-center px-4 py-8">
+      <div className="mb-6 flex flex-col items-center gap-2 text-center">
+        <img src="/logo-mark.svg" alt="" width={48} height={48} className="size-12" />
+        <h1 className="text-title font-semibold">Log in to Digima</h1>
+      </div>
+      {message && <Message>{message}</Message>}
 
-      <main className="page page-narrow">
-        <h1>Log in</h1>
-        {message && <Message>{message}</Message>}
-
-        <form className="panel" noValidate onSubmit={onSubmit}>
+      <Card>
+        <form noValidate onSubmit={onSubmit}>
           <TextField
             id="email"
             label="Email address"
@@ -94,15 +96,15 @@ export function LoginPage() {
               setErrors((x) => ({ ...x, password: undefined }));
             }}
           />
-          <label className="check">
-            <input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} /> Show password
-          </label>
-          <button className="btn btn-primary btn-block mt-2" disabled={busy}>
+          <Checkbox checked={showPw} onChange={(e) => setShowPw(e.target.checked)}>
+            Show password
+          </Checkbox>
+          <Button type="submit" variant="primary" block loading={busy} className="mt-2">
             {busy ? 'Logging in…' : 'Log in'}
-          </button>
-          <p className="hint mt-3">Forgot your password? Ask an admin to reset it.</p>
+          </Button>
+          <p className="mt-3 text-small text-text-muted">Forgot your password? Ask an admin to reset it.</p>
         </form>
-      </main>
-    </>
+      </Card>
+    </main>
   );
 }

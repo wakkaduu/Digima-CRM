@@ -17,6 +17,9 @@ export const queryClient: QueryClient = new QueryClient({
   queryCache: new QueryCache({ onError: handleSessionErrors }),
   mutationCache: new MutationCache({ onError: handleSessionErrors }),
   defaultOptions: {
-    queries: { retry: false, refetchOnWindowFocus: false },
+    // 'always': never park a request while the phone reports "offline". The default ('online') leaves a submit
+    // spinning forever at 0%; we want the call to fail at once so the rep sees "Connection lost" and can tap Retry.
+    queries: { retry: false, refetchOnWindowFocus: false, networkMode: 'always' },
+    mutations: { networkMode: 'always' },
   },
 });

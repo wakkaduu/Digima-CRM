@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SubmitPaymentPage } from './SubmitPaymentPage';
 import { todayManila } from '../lib/format';
@@ -6,18 +6,36 @@ import { mockApi, renderWithProviders } from '../test/renderWithProviders';
 
 const sales = { id: '1', name: 'Sam Reyes', email: 's@x.co', role: 'sales', mustChangePassword: false };
 
+const estimate = {
+  id: '9',
+  docNumber: '1042',
+  customerName: 'Acme Corp',
+  totalAmount: 10000,
+  txnDate: '2026-10-01',
+  expirationDate: null,
+  status: 'Accepted',
+  email: null,
+  pendingAmount: 0,
+  approvedAmount: 0,
+};
+const baseRoutes: Record<string, [number, unknown]> = {
+  'GET /api/auth/me': [200, { user: sales }],
+  'GET /api/qbo/estimates?limit=1': [200, { count: 0, total: 0, estimates: [] }],
+  'GET /api/payments/recent-estimates': [200, { estimates: [] }],
+  'GET /api/payments/mine': [200, { payments: [], unseenCount: 0 }],
+  'GET /api/payments/receivers': [
+    200,
+    { receivers: [{ id: '1', name: 'Sam Reyes' }, { id: '2', name: 'Tina Lopez' }] },
+  ],
+};
+
 beforeEach(() => {
-  mockApi({
-    'GET /api/auth/me': [200, { user: sales }],
-    'GET /api/qbo/estimates': [200, { count: 0, estimates: [] }],
-    'GET /api/payments/mine': [200, { payments: [], unseenCount: 0 }],
-    'GET /api/payments/receivers': [
-      200,
-      { receivers: [{ id: '1', name: 'Sam Reyes' }, { id: '2', name: 'Tina Lopez' }] },
-    ],
-  });
+  mockApi(baseRoutes);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  localStorage.clear();
+});
 
 describe('SubmitPaymentPage', () => {
   it('has a date-received calendar (defaults to today, no future dates) and a received-by field', async () => {
@@ -34,20 +52,167 @@ describe('SubmitPaymentPage', () => {
     expect(names).toEqual(['Select an employee', 'Sam Reyes', 'Tina Lopez']);
   });
 
-  it('keeps the sections in order: estimate, date, payment details, received by, receipt', async () => {
+  it('summarises the defaults in one row instead of two full fields', async () => {
     renderWithProviders(<SubmitPaymentPage />);
-    await screen.findByLabelText('Date the payment was received');
-    const legends = screen.getAllByRole('group').map((g) => g.querySelector('legend')?.textContent);
-    expect(legends).toEqual(['1. Estimate', '2. Date received', '3. Payment details', '4. Received by', '5. Receipt']);
+    expect(await screen.findByText('Received today by you')).toBeInTheDocument();
+    expect(screen.getAllByRole('group').map((g) => g.querySelector('legend')?.textContent)).toEqual(['Paid via', 'Receipt']);
   });
 
   it('hides the reference number for cash only', async () => {
     renderWithProviders(<SubmitPaymentPage />);
-    const mode = await screen.findByLabelText(/Mode of payment/);
+    await screen.findByRole('radio', { name: 'Cash' });
     expect(screen.getByLabelText(/Bank reference number/)).toBeInTheDocument();
-    await userEvent.selectOptions(mode, 'Cash');
+    await userEvent.click(screen.getByRole('radio', { name: 'Cash' }));
     expect(screen.queryByLabelText(/Bank reference number/)).not.toBeInTheDocument();
-    await userEvent.selectOptions(mode, 'BDO');
+    await userEvent.click(screen.getByRole('radio', { name: 'BDO' }));
     expect(screen.getByLabelText(/Bank reference number/)).toBeInTheDocument();
+  });
+
+  it('preselects the bank used last time', async () => {
+    localStorage.setItem('digima.lastBank.1', JSON.stringify('UnionBank'));
+    renderWithProviders(<SubmitPaymentPage />);
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'UnionBank' })).toBeChecked());
+  });
+
+  it('echoes the amount formatted and tidies it on blur', async () => {
+    renderWithProviders(<SubmitPaymentPage />);
+    const amount = await screen.findByLabelText(/Amount received/);
+    await userEvent.type(amount, '₱ 2500');
+    expect(screen.getByText('₱2,500.00')).toBeInTheDocument();
+    await userEvent.tab();
+    expect(amount).toHaveValue('2,500.00');
+  });
+
+  it('keeps the submit button enabled and explains what is missing instead', async () => {
+    renderWithProviders(<SubmitPaymentPage />);
+    const button = await screen.findByRole('button', { name: 'Submit for approval' });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(await screen.findByText(/Search for the customer or estimate number/)).toBeInTheDocument();
+    expect(screen.getByText(/Enter an amount greater than 0/)).toBeInTheDocument();
+    expect(screen.getByText('Select how the payment was received.')).toBeInTheDocument();
+    expect(screen.getByText(/Attach a screenshot or photo/)).toBeInTheDocument();
+  });
+
+  it('restores a saved draft and lets the user discard it', async () => {
+    localStorage.setItem(
+      'digima.draft.1',
+      JSON.stringify({ estimate: null, receivedOn: todayManila(), receivedById: null, amount: '1,200.00', bank: 'BDO', refNo: 'ABC12345' }),
+    );
+    renderWithProviders(<SubmitPaymentPage />);
+    expect(await screen.findByText(/Draft restored/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Amount received/)).toHaveValue('1,200.00');
+    await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.getByLabelText(/Amount received/)).toHaveValue('');
+    expect(localStorage.getItem('digima.draft.1')).toBeNull();
+  });
+
+  it('offers the modes of payment the API lists, not a hard-coded set', async () => {
+    mockApi({
+      ...baseRoutes,
+      'GET /api/config/banks': [
+        200,
+        {
+          banks: [
+            { id: 'Maya', key: 'Maya', label: 'Maya', referenceNumber: 'optional' },
+            { id: 'Petty cash', key: 'PettyCash', label: 'Petty cash', referenceNumber: 'none' },
+          ],
+          defaultFeePercent: 2,
+        },
+      ],
+    });
+    renderWithProviders(<SubmitPaymentPage />);
+    expect(await screen.findByRole('radio', { name: 'Maya' })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'BDO' })).not.toBeInTheDocument();
+    // "no reference number" comes from the API too, not from the word Cash.
+    await userEvent.click(screen.getByRole('radio', { name: 'Petty cash' }));
+    expect(screen.queryByLabelText(/Bank reference number/)).not.toBeInTheDocument();
+  });
+
+  it('searches estimates on the server and lists recent ones first', async () => {
+    const fetchMock = mockApi({
+      ...baseRoutes,
+      'GET /api/payments/recent-estimates': [200, { estimates: [estimate] }],
+      'GET /api/qbo/estimates?q=beta&limit=30': [200, { count: 1, total: 1, estimates: [{ ...estimate, id: '12', docNumber: '1050', customerName: 'Beta Ltd' }] }],
+    });
+    renderWithProviders(<SubmitPaymentPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Customer or estimate' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Choose an estimate' });
+    expect(await within(sheet).findByText('Recent estimates')).toBeInTheDocument();
+    expect(within(sheet).getByText(/Acme Corp/)).toBeInTheDocument();
+
+    await userEvent.type(within(sheet).getByLabelText('Customer name or estimate number'), 'beta');
+    expect(await within(sheet).findByText(/Beta Ltd/)).toBeInTheDocument();
+    expect(within(sheet).getByText('1 found.')).toBeInTheDocument();
+
+    // Never the whole list: only the one-row probe and the capped search.
+    const urls = fetchMock.mock.calls.map(([u]) => String(u)).filter((u) => u.startsWith('/api/qbo/estimates'));
+    expect(urls.sort()).toEqual(['/api/qbo/estimates?limit=1', '/api/qbo/estimates?q=beta&limit=30']);
+  });
+});
+
+describe('SubmitPaymentPage retry safety', () => {
+  const sent: Record<string, string>[] = [];
+  const outcomes: ('network' | 'ok')[] = [];
+
+  class FakeXhr {
+    upload = {};
+    onload?: () => void;
+    onerror?: () => void;
+    status = 201;
+    statusText = '';
+    response: unknown = { payment: { id: 'p1', status: 'pending' } };
+    headers: Record<string, string> = {};
+    open() {}
+    abort() {}
+    setRequestHeader(k: string, v: string) {
+      this.headers[k] = v;
+    }
+    send() {
+      sent.push(this.headers);
+      queueMicrotask(() => (outcomes.shift() === 'ok' ? this.onload?.() : this.onerror?.()));
+    }
+  }
+
+  async function fillForm() {
+    await userEvent.click(await screen.findByRole('button', { name: 'Customer or estimate' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Choose an estimate' });
+    await userEvent.click(await within(sheet).findByRole('button', { name: /Acme Corp/ }));
+    await userEvent.type(await screen.findByLabelText(/Amount received/), '2500');
+    await userEvent.click(screen.getByRole('radio', { name: 'BDO' }));
+    const file = new File([new Uint8Array(2048)], 'receipt.png', { type: 'image/png' });
+    await userEvent.upload(document.querySelectorAll<HTMLInputElement>('input[type=file]')[1]!, file);
+    await screen.findByText(/receipt\.png/);
+  }
+
+  beforeEach(() => {
+    sent.length = 0;
+    outcomes.length = 0;
+    mockApi({
+      ...baseRoutes,
+      'GET /api/payments/recent-estimates': [200, { estimates: [estimate] }],
+    });
+    vi.stubGlobal('XMLHttpRequest', FakeXhr);
+  });
+
+  it('reuses the Idempotency-Key when retrying the same payment, and issues a new one if it changes', async () => {
+    outcomes.push('network', 'network', 'ok');
+    renderWithProviders(<SubmitPaymentPage />);
+    await fillForm();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for approval' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[0]!['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
+    expect(sent[1]!['Idempotency-Key']).toBe(sent[0]!['Idempotency-Key']); // a lost response cannot double-post
+
+    // Edit the amount: that is a different payment, so it must not be swallowed by the earlier key.
+    const amount = screen.getByLabelText(/Amount received/);
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '3000');
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for approval' }));
+    await waitFor(() => expect(sent).toHaveLength(3));
+    expect(sent[2]!['Idempotency-Key']).not.toBe(sent[0]!['Idempotency-Key']);
+    expect(await screen.findByRole('heading', { name: 'Submitted' })).toBeInTheDocument();
   });
 });

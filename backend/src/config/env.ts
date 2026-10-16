@@ -20,11 +20,12 @@ const schema = z.object({
     QBO_DEPOSIT_ACCOUNT_BDO: z.string().optional(),
     QBO_DEPOSIT_ACCOUNT_UNIONBANK: z.string().optional(),
     QBO_DEPOSIT_ACCOUNT_DIGIMA: z.string().optional(),
-    QBO_DEPOSIT_ACCOUNT_HAPPYMEAL: z.string().optional(),
+    QBO_DEPOSIT_ACCOUNT_HAPPYMED: z.string().optional(),
     QBO_DEPOSIT_ACCOUNT_CASH: z.string().optional(),
     QBO_BANK_FEE_ACCOUNT_ID: z.string().optional(),
 
     SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 chars'),
+    DEFAULT_FEE_PERCENT: z.coerce.number().min(0).max(20).default(1.5), // pre-fills the approval screen's "apply fee" button
     ESTIMATE_LOOKBACK_DAYS: z.coerce.number().int().min(30).default(365),
 });
 

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import * as paymentModel from '../models/payment.model';
 import { idSchema, approveSchema, rejectSchema } from '../validators/payment.validator';
 import * as qboPayment from '../services/qboPayment.service';
+import { toListItem } from '../serializers/payment.serializer';
 import HttpError from '../utils/HttpError';
 import asyncHandler from '../utils/asyncHandler';
 
@@ -18,14 +19,7 @@ function parseId(raw: unknown) {
 // GET /api/payments/pending
 export const listPending = asyncHandler(async (req, res) => {
     const payments = await paymentModel.listPending();
-    res.json({
-        count: payments.length,
-        payments: payments.map(({ proofPublicId, ...p }) => ({
-            ...p,
-            proofImageUrl: `/api/payments/${p.id}/receipt`,
-            qboPartiallyPosted: Boolean(p.qboPaymentId),
-        })),
-    });
+    res.json({ count: payments.length, payments: payments.map((p) => toListItem(p, 'admin')) });
 });
 
 // POST /api/payments/approve/:id   body: { finalAmount: "24625.00" }
@@ -69,6 +63,7 @@ export const approve = asyncHandler(async (req, res) => {
             finalAmount: fromCents(finalCents).toFixed(2),
             approvedBy: req.user.name,
             approvedAt: new Date(),
+            reviewedById: req.user.id,
             qboPaymentId: result.paymentId,
             qboDepositId: result.depositId || null,
         });
@@ -102,12 +97,24 @@ export const reject = asyncHandler(async (req, res) => {
         );
     }
 
+    const now = new Date();
     const count = await paymentModel.rejectIfPending(id, {
         rejectionReason: parsed.data.reason,
         approvedBy: req.user.name,
-        approvedAt: new Date(),
+        approvedAt: now,
+        reviewedById: req.user.id,
     });
     if (!count) throw new HttpError(409, 'This payment was already processed.');
+    res.json({ ok: true, undoUntil: new Date(now.getTime() + paymentModel.REJECT_UNDO_WINDOW_MS) });
+});
+
+// POST /api/payments/reject/:id/undo  -> put it back in the queue (same admin, within the undo window)
+export const undoReject = asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id);
+    const count = await paymentModel.undoReject(id, req.user.id);
+    if (!count) {
+        throw new HttpError(409, 'This rejection can no longer be undone.', { code: 'UNDO_NOT_AVAILABLE' });
+    }
     res.json({ ok: true });
 });
 
