@@ -5,6 +5,7 @@ const schema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     PORT: z.coerce.number().default(3000),
     APP_BASE_URL: z.string().url(),
+    FRONTEND_URL: z.string().url().default('http://localhost:5173'), // where the QBO callback sends the browser back to
     DATABASE_URL: z.string().min(1),
 
     CLOUDINARY_CLOUD_NAME: z.string().min(1),

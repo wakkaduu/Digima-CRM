@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import express from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -55,15 +53,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/qbo', qboRoutes);
 app.use('/api/payments', paymentRoutes);
 
-// The React app (frontend/dist). In development Vite serves it instead and proxies /api here.
-const clientDir = path.join(__dirname, '..', '..', 'frontend', 'dist');
-const hasClient = fs.existsSync(path.join(clientDir, 'index.html'));
-if (hasClient) app.use(express.static(clientDir));
-
-app.use('/api', notFound);
-
-// Client-side routes (/admin, /setup, ...) all get index.html; React Router takes over.
-if (hasClient) app.get(/^(?!\/(api|assets)\/).*/, (req, res) => res.sendFile(path.join(clientDir, 'index.html')));
+// JSON API only. The React app is served separately (Vite on :5173, which proxies /api here).
+app.use(notFound);
 app.use(errorHandler);
 
 export default app;

@@ -34,7 +34,7 @@ export const callback = asyncHandler(async (req, res) => {
     const { state, error } = req.query;
 
     if (error) {
-        return res.redirect(`/setup?qbo=error&reason=${encodeURIComponent(String(error))}`);
+        return res.redirect(`${env.FRONTEND_URL}/setup?qbo=error&reason=${encodeURIComponent(String(error))}`);
     }
 
     const expectedState = req.session!.qboState;
@@ -44,7 +44,7 @@ export const callback = asyncHandler(async (req, res) => {
     }
 
     await qbo.handleCallback(`${env.APP_BASE_URL}${req.originalUrl}`);
-    res.redirect('/setup?qbo=connected');
+    res.redirect(`${env.FRONTEND_URL}/setup?qbo=connected`);
 });
 
 // GET /api/auth/qbo/status
