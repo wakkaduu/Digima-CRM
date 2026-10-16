@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Submit a payment · Payment Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/app.css" />
+</head>
+
+<body>
+    <header id="topbar" class="topbar"></header>
+
+    <main class="page">
+        <h1>Submit a payment</h1>
+
+        <div id="reviewNotice" hidden></div>
+        <div id="qboNotice" hidden></div>
+        <div id="message" tabindex="-1" hidden></div>
+
+        <form id="payForm" class="panel" novalidate>
+            <p class="hint" style="margin-top:0">All fields are required.</p>
+
+            <fieldset class="section">
+                <legend>1. Estimate</legend>
+                <div class="field" id="estPicker">
+                    <label for="estSearch">Customer name or estimate number</label>
+                    <input id="estSearch" class="input" type="search" autocomplete="off" aria-describedby="estCount" />
+                    <p id="estCount" class="hint" aria-live="polite"></p>
+                    <ul id="estResults" class="results" hidden></ul>
+                </div>
+                <div id="estSelected" hidden>
+                    <dl class="kv">
+                        <dt>Customer</dt>
+                        <dd id="selCustomer"></dd>
+                        <dt>Estimate no.</dt>
+                        <dd id="selNumber"></dd>
+                        <dt>Status</dt>
+                        <dd id="selStatus"></dd>
+                        <dt>Estimate total</dt>
+                        <dd id="selTotal"></dd>
+                        <dt>Awaiting review</dt>
+                        <dd id="selPending"></dd>
+                        <dt>Already approved</dt>
+                        <dd id="selApproved"></dd>
+                        <dt>Estimated remaining</dt>
+                        <dd id="selRemaining"></dd>
+                    </dl>
+                    <button type="button" id="selClear" class="btn btn-link">Choose a different estimate</button>
+                </div>
+            </fieldset>
+
+            <fieldset class="section">
+                <legend>2. Payment details</legend>
+                <div class="field">
+                    <label for="amount">Amount received (PHP)</label>
+                    <input id="amount" class="input" inputmode="decimal" autocomplete="off"
+                        aria-describedby="amountHint" />
+                    <p id="amountHint" class="hint">The full amount the client paid, before any bank fee.</p>
+                    <div id="amountWarn" hidden style="margin-top:8px"></div>
+                </div>
+                <div class="field">
+                    <label for="bank">Bank that received the payment</label>
+                    <select id="bank" class="input">
+                        <option value="">Select a bank</option>
+                        <option>BDO</option>
+                        <option>UnionBank</option>
+                        <option>Digima</option>
+                        <option>Happy Meal</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="refNo">Bank reference number</label>
+                    <input id="refNo" class="input" autocomplete="off" aria-describedby="refHint" />
+                    <p id="refHint" class="hint">The transaction or reference number printed on the receipt. It is used
+                        to catch duplicate submissions.</p>
+                </div>
+            </fieldset>
+
+            <fieldset class="section">
+                <legend>3. Receipt</legend>
+                <div class="field">
+                    <label for="proof">Receipt screenshot</label>
+                    <input id="proof" class="input" type="file" accept="image/jpeg,image/png,image/webp"
+                        aria-describedby="proofHint" />
+                    <p id="proofHint" class="hint">JPG, PNG or WebP, up to 5 MB.</p>
+                    <p id="fileInfo" class="hint" hidden></p>
+                    <img id="preview" class="preview" alt="Preview of the selected receipt" hidden />
+                </div>
+            </fieldset>
+
+            <button id="submitBtn" class="btn btn-primary btn-block">Submit for approval</button>
+            <p class="hint">An admin will check the receipt and post the payment to QuickBooks.</p>
+        </form>
+
+        <section class="panel">
+            <div class="table-wrap">
+                <table class="table">
+                    <caption>My recent submissions</caption>
+                    <thead>
+                        <tr>
+                            <th>Submitted</th>
+                            <th>Customer</th>
+                            <th class="num">Amount</th>
+                            <th>Status</th>
+                            <th>Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mineBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/ui.js"></script>
+    <script src="/js/sales.js"></script>
+</body>
+
+</html>

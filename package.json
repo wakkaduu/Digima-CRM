@@ -1,0 +1,38 @@
+{
+  "name": "payment-portal",
+  "version": "0.1.0",
+  "description": "Internal Payment Automation Portal - Sales submits, Admin approves, QBO updated",
+  "main": "src/server.js",
+  "private": true,
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "user:create": "node scripts/create-user.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "cloudinary": "^2.5.1",
+    "compression": "^1.7.5",
+    "cookie-session": "^2.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "intuit-oauth": "^4.1.2",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prisma": "^6.2.1"
+  }
+}
