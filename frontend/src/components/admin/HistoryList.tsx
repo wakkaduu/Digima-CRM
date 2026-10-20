@@ -15,7 +15,7 @@ export function HistoryList({ payments, selectedId }: { payments: HistoryPayment
       {payments.map((p) => (
         <li key={p.id}>
           <Link
-            to={{ pathname: `/admin/${p.id}`, search }}
+            to={{ pathname: `/payments/review/${p.id}`, search }}
             aria-current={p.id === selectedId ? 'true' : undefined}
             className={cn(
               'block min-h-16 rounded-card border p-3 text-text no-underline',

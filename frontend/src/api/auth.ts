@@ -14,7 +14,7 @@ export function useMe() {
   });
 }
 
-export const homePath = (user: User) => (user.role === 'admin' ? '/admin' : '/');
+export const homePath = (_user: User) => '/dashboard';
 
 /** Only same-site paths are allowed as a post-login destination (no open redirects). */
 export const safeNext = (next: string | null) =>

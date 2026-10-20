@@ -58,6 +58,16 @@ describe('SubmitPaymentPage', () => {
     expect(screen.getAllByRole('group').map((g) => g.querySelector('legend')?.textContent)).toEqual(['Paid via', 'Receipt']);
   });
 
+  it('preselects the estimate when arriving from "Record payment" on an estimate', async () => {
+    mockApi({
+      ...baseRoutes,
+      'GET /api/estimates/9': [200, { estimate: { ...estimate, customerId: '58', lines: [], memo: null, linkedInvoiceIds: [] } }],
+    });
+    renderWithProviders(<SubmitPaymentPage />, '/payments/new?estimateId=9');
+    expect((await screen.findAllByText('Acme Corp')).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Change estimate' })).toBeInTheDocument();
+  });
+
   it('hides the reference number for cash only', async () => {
     renderWithProviders(<SubmitPaymentPage />);
     await screen.findByRole('radio', { name: 'Cash' });
@@ -181,7 +191,7 @@ describe('SubmitPaymentPage retry safety', () => {
     await userEvent.type(await screen.findByLabelText(/Amount received/), '2500');
     await userEvent.click(screen.getByRole('radio', { name: 'BDO' }));
     const file = new File([new Uint8Array(2048)], 'receipt.png', { type: 'image/png' });
-    await userEvent.upload(document.querySelectorAll<HTMLInputElement>('input[type=file]')[1]!, file);
+    await userEvent.upload(document.querySelectorAll<HTMLInputElement>('input[type=file]')[0]!, file);
     await screen.findByText(/receipt\.png/);
   }
 

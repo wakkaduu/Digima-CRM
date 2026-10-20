@@ -202,7 +202,8 @@ let estimateCache: { at: number; data: EstimateDto[] | null } = { at: 0, data: n
 // estimates (ESTIMATE_LOOKBACK_DAYS) so the list stays manageable.
 const PICKABLE_STATUSES = new Set(['Pending', 'Accepted', 'Closed']);
 
-async function fetchAllOpenEstimates() {
+/** Every estimate in the lookback window, whatever its status. */
+async function fetchRecentEstimates() {
     const since = new Date(Date.now() - env.ESTIMATE_LOOKBACK_DAYS * 86400000)
         .toISOString()
         .slice(0, 10);
@@ -231,9 +232,7 @@ async function fetchAllOpenEstimates() {
         start += pageSize;
     }
 
-    return all.filter(
-        (e: QboJson) => (!e.TxnStatus || PICKABLE_STATUSES.has(e.TxnStatus)) && String(e.TxnDate) >= since
-    );
+    return all.filter((e: QboJson) => String(e.TxnDate) >= since);
 }
 
 function toEstimateDto(e: QboJson): EstimateDto {
@@ -252,7 +251,7 @@ function toEstimateDto(e: QboJson): EstimateDto {
 }
 
 // Attach what's already been submitted in the portal so Sales doesn't double-submit.
-async function attachPortalTotals(estimates: EstimateDto[]) {
+export async function attachPortalTotals<T extends EstimateDto>(estimates: T[]) {
     if (!estimates.length) return estimates;
 
     const rows = await paymentModel.listActiveForEstimates(estimates.map((e) => e.id));
@@ -271,13 +270,21 @@ async function attachPortalTotals(estimates: EstimateDto[]) {
     }));
 }
 
-async function loadEstimates(forceRefresh: boolean) {
+/** All recent estimates (any status), cached for a minute. Used by the Estimates and Customers modules. */
+export async function loadAllEstimates(forceRefresh = false) {
     const fresh = Date.now() - estimateCache.at < ESTIMATE_CACHE_TTL_MS;
     if (!forceRefresh && fresh && estimateCache.data) return estimateCache.data;
-    const data = (await fetchAllOpenEstimates()).map(toEstimateDto);
+    const data = (await fetchRecentEstimates()).map(toEstimateDto);
     estimateCache = { at: Date.now(), data };
     return data;
 }
+
+/** The estimates a payment can be submitted for. */
+async function loadEstimates(forceRefresh: boolean) {
+    return (await loadAllEstimates(forceRefresh)).filter((e) => !e.status || PICKABLE_STATUSES.has(e.status));
+}
+
+export const ESTIMATE_LOOKBACK_DAYS = env.ESTIMATE_LOOKBACK_DAYS;
 
 /**
  * Open estimates, optionally filtered by `search` (customer name or estimate number) and capped at `limit`.
@@ -332,6 +339,103 @@ export async function getEstimateById(id: string) {
             err.details.fault.Error[0] &&
             err.details.fault.Error[0].code;
         if (code === '610') throw new HttpError(404, 'Estimate not found in QuickBooks');
+        throw err;
+    }
+}
+
+/* ───────────────────────── Estimate detail (Estimates module) ───────────────────────── */
+
+export interface EstimateLine {
+    description: string | null;
+    quantity: number | null;
+    amount: number;
+}
+
+/** One estimate with its line items and memo (any status). */
+export async function getEstimateDetail(id: string) {
+    if (!/^\d+$/.test(String(id))) throw new HttpError(400, 'Invalid estimate id');
+    try {
+        const json = await qboRequest(`/estimate/${id}`);
+        const e = json.Estimate;
+        const lines: EstimateLine[] = (e.Line || [])
+            .filter((l: QboJson) => l.DetailType === 'SalesItemLineDetail')
+            .map((l: QboJson) => ({
+                description: l.Description || (l.SalesItemLineDetail?.ItemRef?.name ?? null),
+                quantity: l.SalesItemLineDetail?.Qty ?? null,
+                amount: l.Amount,
+            }));
+        return {
+            ...toEstimateDto(e),
+            lines,
+            memo: (e.CustomerMemo && e.CustomerMemo.value) || null,
+            linkedInvoiceIds: (e.LinkedTxn || [])
+                .filter((t: QboJson) => t.TxnType === 'Invoice')
+                .map((t: QboJson) => t.TxnId as string),
+        };
+    } catch (err: any) {
+        if (err.details?.fault?.Error?.[0]?.code === '610') throw new HttpError(404, 'Estimate not found in QuickBooks');
+        throw err;
+    }
+}
+
+/* ───────────────────────── Customers (Customers module) ───────────────────────── */
+
+export interface CustomerDto {
+    id: string;
+    name: string;
+    company: string | null;
+    email: string | null;
+    phone: string | null;
+    active: boolean;
+    /** What the customer owes in QuickBooks (open invoices). */
+    balance: number;
+    updatedAt: string | null;
+}
+
+let customerCache: { at: number; data: CustomerDto[] | null } = { at: 0, data: null };
+
+function toCustomerDto(c: QboJson): CustomerDto {
+    return {
+        id: c.Id,
+        name: c.DisplayName || c.CompanyName || c.FullyQualifiedName || `Customer ${c.Id}`,
+        company: c.CompanyName || null,
+        email: (c.PrimaryEmailAddr && c.PrimaryEmailAddr.Address) || null,
+        phone: (c.PrimaryPhone && c.PrimaryPhone.FreeFormNumber) || (c.Mobile && c.Mobile.FreeFormNumber) || null,
+        active: c.Active !== false,
+        balance: Number(c.Balance) || 0,
+        updatedAt: (c.MetaData && c.MetaData.LastUpdatedTime) || null,
+    };
+}
+
+/** Every customer, active and inactive, cached for a minute. */
+export async function loadCustomers(forceRefresh = false): Promise<CustomerDto[]> {
+    const fresh = Date.now() - customerCache.at < ESTIMATE_CACHE_TTL_MS;
+    if (!forceRefresh && fresh && customerCache.data) return customerCache.data;
+
+    const pageSize = 1000;
+    let start = 1;
+    const all: QboJson[] = [];
+    for (; ;) {
+        const json = await runQuery(
+            `select * from Customer where Active in (true, false) ORDERBY DisplayName STARTPOSITION ${start} MAXRESULTS ${pageSize}`
+        );
+        const page = (json.QueryResponse && json.QueryResponse.Customer) || [];
+        all.push(...page);
+        if (page.length < pageSize) break;
+        start += pageSize;
+    }
+    const data = all.map(toCustomerDto);
+    customerCache = { at: Date.now(), data };
+    return data;
+}
+
+export async function getCustomerById(id: string): Promise<CustomerDto> {
+    if (!/^\d+$/.test(String(id))) throw new HttpError(400, 'Invalid customer id');
+    try {
+        const json = await qboRequest(`/customer/${id}`);
+        return toCustomerDto(json.Customer);
+    } catch (err: any) {
+        if (err.details?.fault?.Error?.[0]?.code === '610') throw new HttpError(404, 'Customer not found in QuickBooks');
         throw err;
     }
 }

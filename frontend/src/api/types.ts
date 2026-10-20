@@ -122,3 +122,63 @@ export interface QboStatus {
   refreshTokenExpiresAt?: string;
   expiresInDays?: number;
 }
+
+/* ── CRM modules (Customers, Estimates) ── */
+
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** A row from GET /api/customers (QuickBooks customer plus CRM figures). */
+export interface CustomerRow {
+  id: string;
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  active: boolean;
+  /** What the customer owes in QuickBooks. */
+  balance: number;
+  openEstimates: number;
+  lastPaymentAt: string | null;
+}
+
+export interface CustomerDetail extends CustomerRow {
+  paidToDate: number;
+  pendingPayments: number;
+  outstanding: number;
+}
+
+export type EstimateStatus = 'Pending' | 'Accepted' | 'Closed' | 'Rejected';
+
+/** A row from GET /api/estimates. */
+export interface EstimateRow {
+  id: string;
+  docNumber: string | null;
+  customerId?: string;
+  customerName?: string;
+  totalAmount: number;
+  txnDate: string;
+  expirationDate: string | null;
+  status?: EstimateStatus | string;
+  email: string | null;
+  /** Payments submitted in the portal: waiting for review / already approved. */
+  pendingAmount: number;
+  approvedAmount: number;
+}
+
+export interface EstimateDetail extends EstimateRow {
+  lines: { description: string | null; quantity: number | null; amount: number }[];
+  memo: string | null;
+  linkedInvoiceIds: string[];
+}
+
+/** A payment as shown on the Customers / Estimates tabs (admin rows carry a few more fields). */
+export type LinkedPayment = Pick<
+  HistoryPayment,
+  'id' | 'customerName' | 'qboEstimateId' | 'qboEstimateNumber' | 'amountSubmitted' | 'finalAmount' | 'bankDepositedTo' | 'status' | 'createdAt'
+> &
+  Partial<Pick<HistoryPayment, 'submittedBy'>>;

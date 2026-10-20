@@ -1,9 +1,10 @@
+import { Suspense } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { homePath, useMe } from '../api/auth';
 import type { Role } from '../api/types';
 import { Message } from './Message';
 import { AppShell } from './shell/AppShell';
-import { Skeleton } from './ui/States';
+import { PageSkeleton } from './ui/Skeletons';
 
 /**
  * Route guard + app shell: redirects to login / password change as needed.
@@ -15,9 +16,8 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
 
   if (isPending) {
     return (
-      <div role="status" aria-label="Loading" className="mx-auto max-w-[720px] space-y-3 p-6">
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="h-40 w-full" />
+      <div className="mx-auto max-w-[720px] p-6">
+        <PageSkeleton label="Loading" />
       </div>
     );
   }
@@ -34,7 +34,10 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
 
   return (
     <AppShell user={user}>
-      <Outlet />
+      {/* Inside the shell, so the sidebar stays put while a page's code loads. */}
+      <Suspense fallback={<PageSkeleton />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   );
 }

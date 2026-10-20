@@ -10,8 +10,11 @@ const tree = (
     <Route element={<RequireAuth roles={['sales']} />}>
       <Route path="/" element={<p>Home screen</p>} />
     </Route>
+    <Route element={<RequireAuth roles={['sales', 'admin']} />}>
+      <Route path="/dashboard" element={<p>Dashboard screen</p>} />
+    </Route>
     <Route element={<RequireAuth roles={['admin']} />}>
-      <Route path="/admin" element={<p>Admin screen</p>} />
+      <Route path="/payments/review" element={<p>Admin screen</p>} />
     </Route>
   </Routes>
 );
@@ -35,14 +38,14 @@ describe('RequireAuth', () => {
 
   it('keeps sales users out of admin pages', async () => {
     mockApi({ 'GET /api/auth/me': [200, { user: sales }] });
-    renderWithProviders(tree, '/admin');
-    expect(await screen.findByText('Home screen')).toBeInTheDocument();
+    renderWithProviders(tree, '/payments/review');
+    expect(await screen.findByText('Dashboard screen')).toBeInTheDocument();
   });
 
-  it('keeps admins out of the sales submit page and sends them to their approvals page', async () => {
+  it('keeps admins out of the sales submit page and sends them to the dashboard', async () => {
     mockApi({ 'GET /api/auth/me': [200, { user: admin }] });
     renderWithProviders(tree, '/');
-    expect(await screen.findByText('Admin screen')).toBeInTheDocument();
+    expect(await screen.findByText('Dashboard screen')).toBeInTheDocument();
     expect(screen.queryByText('Home screen')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /^Submit/ })).not.toBeInTheDocument();
   });

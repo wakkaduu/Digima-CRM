@@ -83,6 +83,17 @@
     U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Toasts slide in from the edge they sit on. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+.toast-in {
+  animation: toast-in 160ms ease-out;
+}
+
 /* Motion off for people who ask for it (WCAG 2.3.3): spinners and skeleton pulses already opt out per element;
    this also covers transitions and any smooth scrolling. */
 @media (prefers-reduced-motion: reduce) {

@@ -28,9 +28,9 @@ function setup(extra: Record<string, [number, unknown]> = {}) {
   });
   renderWithProviders(
     <Routes>
-      <Route path="/admin/:id?" element={<AdminPendingPage />} />
+      <Route path="/payments/review/:id?" element={<AdminPendingPage />} />
     </Routes>,
-    '/admin',
+    '/payments/review',
   );
   return fetchMock;
 }
@@ -72,9 +72,9 @@ describe('AdminPendingPage queue', () => {
     mockApi({ 'GET /api/payments/pending': [200, { count: 0, payments: [] }] });
     renderWithProviders(
       <Routes>
-        <Route path="/admin/:id?" element={<AdminPendingPage />} />
+        <Route path="/payments/review/:id?" element={<AdminPendingPage />} />
       </Routes>,
-      '/admin',
+      '/payments/review',
     );
     expect(await screen.findByText('All caught up')).toBeInTheDocument();
   });
@@ -103,6 +103,19 @@ describe('AdminPendingPage review', () => {
     expect(await screen.findByText(/Approved Acme Corp and posted to QuickBooks \(payment #77, deposit #78\)/)).toBeInTheDocument();
     // Auto-advance: the next payment in the queue (Gamma Inc) is now open.
     expect(await screen.findByRole('heading', { name: 'Gamma Inc' })).toBeInTheDocument();
+  });
+
+  it('shows a persistent warning, not an error, when the estimate has no invoice yet', async () => {
+    setup({ 'POST /api/payments/approve/old': [409, { error: { message: 'No invoice is linked to this estimate yet. In QuickBooks, open the estimate and choose "Create invoice", then approve again.', details: { code: 'NO_INVOICE' } } }] });
+    await open('Acme Corp');
+    await userEvent.click(screen.getByRole('button', { name: /^Approve ₱/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Approve Acme Corp?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: /Approve and post/ }));
+
+    const warning = await screen.findByRole('alert');
+    expect(warning).toHaveTextContent('Create the invoice in QuickBooks first');
+    expect(warning).toHaveTextContent('choose "Create invoice"');
+    expect(warning).toHaveTextContent('Warning:'); // the kind of message is written out, not only coloured
   });
 
   it('does not open the dialog for a bad amount; it focuses the field instead', async () => {

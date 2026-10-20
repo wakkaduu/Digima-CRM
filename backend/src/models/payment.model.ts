@@ -117,6 +117,8 @@ export function buildListWhere(q: ListQuery, scope: { role: 'admin' | 'sales'; u
     else if (q.rep) and.push({ submittedById: q.rep });
     if (q.status?.length) and.push({ status: { in: q.status } });
     if (q.bank) and.push({ bankDepositedTo: q.bank as BankAccount });
+    if (q.customerId) and.push({ qboCustomerId: q.customerId });
+    if (q.estimateId) and.push({ qboEstimateId: q.estimateId });
     if (q.from) and.push({ createdAt: { gte: manilaStart(q.from) } });
     if (q.to) and.push({ createdAt: { lt: new Date(manilaStart(q.to).getTime() + DAY_MS) } }); // inclusive of the "to" day
     if (q.q) {
@@ -198,3 +200,26 @@ export async function undoReject(id: string, reviewerId: string) {
     });
     return count;
 };
+
+/* ── Customers module ── */
+
+/** Per QuickBooks customer: payments approved so far (as submitted, matching the estimate progress) and the most recent submission. */
+export async function customerPaymentStats() {
+    const rows = await prisma.payment.groupBy({
+        by: ['qboCustomerId', 'status'],
+        where: { qboCustomerId: { not: null } },
+        _sum: { amountSubmitted: true },
+        _max: { createdAt: true },
+        _count: { _all: true },
+    });
+    const stats = new Map<string, { paidToDate: number; pendingCount: number; lastPaymentAt: Date | null }>();
+    for (const r of rows) {
+        const s = stats.get(r.qboCustomerId!) ?? { paidToDate: 0, pendingCount: 0, lastPaymentAt: null };
+        if (r.status === 'approved') s.paidToDate += Number(r._sum.amountSubmitted ?? 0);
+        if (r.status === 'pending') s.pendingCount += r._count._all;
+        const at = r._max.createdAt;
+        if (at && (!s.lastPaymentAt || at > s.lastPaymentAt)) s.lastPaymentAt = at;
+        stats.set(r.qboCustomerId!, s);
+    }
+    return stats;
+}

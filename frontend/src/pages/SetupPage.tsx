@@ -69,9 +69,13 @@ export default function SetupPage() {
         </div>
 
         {status.isPending && (
-          <div role="status" aria-label="Checking the connection" className="space-y-2">
-            <Skeleton className="h-5 w-64" />
-            <Skeleton className="h-5 w-40" />
+          <div role="status" aria-label="Checking the connection" className="grid grid-cols-[6rem_1fr] gap-x-4 gap-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="contents">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className={i % 2 ? 'h-4 w-48' : 'h-4 w-32'} />
+              </div>
+            ))}
           </div>
         )}
         {status.error && <ErrorState message={`Could not check the connection: ${status.error.message}`} onRetry={() => status.refetch()} />}

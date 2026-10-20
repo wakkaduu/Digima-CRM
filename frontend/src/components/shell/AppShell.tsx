@@ -1,13 +1,15 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { User } from '../../api/types';
 import { cn } from '../../lib/cn';
 import { useKeyboardOpen, useMediaQuery } from '../../lib/useMediaQuery';
 import { ShellContext } from './ShellContext';
 import { BrandLockup } from './BrandLockup';
+import { CommandPalette } from './CommandPalette';
 import { QboBanner } from './QboBanner';
 import { useNavCounts } from './nav';
 import { SIDEBAR_WIDTH, Sidebar, useSidebarCollapsed } from './Sidebar';
 import { TabBar } from './TabBar';
+import { AlertsLink, SearchButton, TopBar } from './TopBar';
 
 /**
  * Mobile-first shell: header + content + bottom tab bar under 1024px;
@@ -20,6 +22,21 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
   const counts = useNavCounts(user);
   const [hideTabs, setHideTabs] = useState(false);
   const showTabs = !desktop && !keyboardOpen && !hideTabs;
+  const [searchOpen, setSearchOpen] = useState(false);
+  const canSearch = !user.mustChangePassword;
+
+  // Ctrl/Cmd+K opens the search from anywhere.
+  useEffect(() => {
+    if (!canSearch) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canSearch]);
 
   return (
     <ShellContext value={{ setHideTabs }}>
@@ -33,10 +50,17 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
       {desktop ? (
         <Sidebar user={user} counts={counts} collapsed={collapsed} onToggle={toggle} />
       ) : (
-        <header className="flex h-14 items-center border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
+        <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
           <BrandLockup />
+          {canSearch && (
+            <div className="flex items-center">
+              <SearchButton onClick={() => setSearchOpen(true)} />
+              <AlertsLink user={user} counts={counts} />
+            </div>
+          )}
         </header>
       )}
+      {desktop && canSearch && <TopBar user={user} counts={counts} onSearch={() => setSearchOpen(true)} />}
       <QboBanner user={user} />
       <main
         id="content"
@@ -49,6 +73,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         {children}
       </main>
       {showTabs && <TabBar user={user} counts={counts} />}
+      {canSearch && <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} user={user} />}
     </div>
     </ShellContext>
   );

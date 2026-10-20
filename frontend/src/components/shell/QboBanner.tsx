@@ -31,7 +31,7 @@ export function QboBanner({ user }: { user: User }) {
             : expired
               ? 'The QuickBooks connection has expired. Approvals cannot be posted until an admin reconnects it.'
               : `The QuickBooks connection expires in ${days} ${days === 1 ? 'day' : 'days'}. Reconnect it before then so approvals keep working.`}{' '}
-          <Link to="/setup" className="font-semibold underline">
+          <Link to="/settings/integrations" className="font-semibold underline">
             Reconnect QuickBooks
           </Link>
         </p>

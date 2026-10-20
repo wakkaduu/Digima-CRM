@@ -140,7 +140,7 @@ export function FilterBar({ search, tabs, filters = [], onFilterChange, onClearA
             </li>
           ))}
           <li>
-            <Button variant="link" onClick={onClearAll}>
+            <Button variant="link" onClick={onClearAll} className="pointer-coarse:min-h-11">
               Clear all
             </Button>
           </li>
@@ -158,7 +158,7 @@ function Chip({ label, onRemove, what }: { label: string; onRemove: () => void; 
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${what} filter`}
-        className="inline-flex size-6 items-center justify-center rounded-badge hover:bg-surface-sunk"
+        className="inline-flex size-6 items-center justify-center rounded-badge hover:bg-surface-sunk pointer-coarse:size-11"
       >
         <X aria-hidden className="size-3.5" />
       </button>

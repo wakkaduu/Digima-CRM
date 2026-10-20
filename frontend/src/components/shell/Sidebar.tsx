@@ -6,7 +6,7 @@ import { cn } from '../../lib/cn';
 import { CountChip } from '../ui/StatusBadge';
 import { AccountMenu } from './AccountMenu';
 import { BrandLockup } from './BrandLockup';
-import { navFor, type NavItem } from './nav';
+import { GROUP_ORDER, navFor, type NavItem } from './nav';
 
 const KEY = 'digima.sidebar.collapsed';
 
@@ -43,10 +43,10 @@ function Item({ item, count, collapsed }: { item: NavItem; count: number; collap
       aria-label={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         cn(
-          'group relative flex min-h-(--control-h) items-center gap-3 rounded-control border-l-2 px-3 no-underline',
+          'group relative flex min-h-(--control-h) items-center gap-3 rounded-control px-3 no-underline',
           isActive
-            ? 'border-accent bg-accent-subtle font-semibold text-accent'
-            : 'border-transparent text-text hover:bg-surface-sunk',
+            ? 'bg-accent-subtle font-semibold text-accent'
+            : 'text-text hover:bg-surface-sunk',
           collapsed && 'justify-center px-0',
         )
       }
@@ -83,7 +83,7 @@ export function Sidebar({
   onToggle: () => void;
 }) {
   const items = navFor(user);
-  const groups = [...new Set(items.map((i) => i.group))];
+  const groups = GROUP_ORDER.filter((g) => items.some((i) => i.group === g));
 
   return (
     <aside
@@ -92,7 +92,7 @@ export function Sidebar({
         collapsed ? 'w-16' : 'w-[232px]',
       )}
     >
-      <div className={cn('flex h-14 items-center px-4', collapsed && 'justify-center px-0')}>
+      <div className={cn('flex h-14 items-center border-b border-border px-4', collapsed && 'justify-center px-0')}>
         <BrandLockup collapsed={collapsed} />
       </div>
       <nav aria-label="Main" className="flex-1 overflow-y-auto px-2 py-2">

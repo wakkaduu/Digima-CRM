@@ -29,7 +29,7 @@ export function PageHeader({
                 <li key={c.label} className="flex items-center gap-1">
                   {i > 0 && <ChevronRight aria-hidden className="size-3.5" />}
                   {c.to ? (
-                    <Link to={c.to} className="text-accent underline">
+                    <Link to={c.to} className="inline-flex min-h-6 items-center text-accent underline pointer-coarse:min-h-11">
                       {c.label}
                     </Link>
                   ) : (

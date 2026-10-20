@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { ClipboardCheck, Plug, ReceiptText, Send } from 'lucide-react';
+import { ClipboardCheck, FileText, LayoutDashboard, Plug, ReceiptText, Send, Users } from 'lucide-react';
 import { useCounts } from '../../api/payments';
 import type { Role, User } from '../../api/types';
 
@@ -15,16 +15,22 @@ export interface NavItem {
   badge?: 'pending' | 'unseen';
   /** Rendered as the raised centre action in the tab bar. */
   primary?: boolean;
-  /** Stay active on child routes (e.g. /admin/:id). */
+  /** Stay active on child routes (e.g. /payments/review/:id). */
   matchChildren?: boolean;
 }
 
+export const GROUP_ORDER: NavItem['group'][] = ['Work', 'Sales', 'Finance', 'Admin'];
+
 // Only screens that exist are listed (D10): modules appear here the day they ship.
+// The array order is the tab-bar order on phones; the sidebar regroups by GROUP_ORDER.
 export const NAV: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', short: 'Home', icon: LayoutDashboard, roles: ['sales', 'admin'], group: 'Work' },
+  { to: '/payments/review', label: 'Approvals', short: 'Review', icon: ClipboardCheck, roles: ['admin'], group: 'Finance', badge: 'pending', matchChildren: true },
+  { to: '/customers', label: 'Customers', short: 'Customers', icon: Users, roles: ['sales', 'admin'], group: 'Sales', matchChildren: true },
   { to: '/payments/new', label: 'Submit payment', short: 'Submit', icon: Send, roles: ['sales'], group: 'Finance', primary: true },
   { to: '/payments', label: 'My payments', short: 'Payments', icon: ReceiptText, roles: ['sales'], group: 'Finance', badge: 'unseen' },
-  { to: '/admin', label: 'Approvals', short: 'Review', icon: ClipboardCheck, roles: ['admin'], group: 'Finance', badge: 'pending', matchChildren: true },
-  { to: '/setup', label: 'QuickBooks', short: 'QuickBooks', icon: Plug, roles: ['admin'], group: 'Admin' },
+  { to: '/estimates', label: 'Estimates', short: 'Estimates', icon: FileText, roles: ['sales', 'admin'], group: 'Sales', matchChildren: true },
+  { to: '/settings/integrations', label: 'QuickBooks', short: 'QuickBooks', icon: Plug, roles: ['admin'], group: 'Admin' },
 ];
 
 export const navFor = (user: User) => (user.mustChangePassword ? [] : NAV.filter((n) => n.roles.includes(user.role)));

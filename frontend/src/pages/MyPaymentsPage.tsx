@@ -10,7 +10,8 @@ import { Button, buttonClass } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Dialog } from '../components/ui/Dialog';
 import { PageHeader } from '../components/ui/PageHeader';
-import { EmptyState, ErrorState, Skeleton } from '../components/ui/States';
+import { ResultsSkeleton } from '../components/ui/Skeletons';
+import { EmptyState, ErrorState } from '../components/ui/States';
 import { NewDot, StatusBadge } from '../components/ui/StatusBadge';
 import { RelativeTime } from '../components/ui/RelativeTime';
 import type { Column } from '../components/data/DataTable';
@@ -187,13 +188,7 @@ export function MyPaymentsPage() {
         />
       )}
 
-      {isPending && !error && (
-        <div role="status" aria-label="Loading payments" className="space-y-2">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      )}
+      {isPending && !error && <ResultsSkeleton label="Loading payments" columns={4} />}
       {error && <ErrorState message={`Could not load your submissions: ${error.message}`} onRetry={() => refetch()} />}
       {data && !all.length && (
         <Card>

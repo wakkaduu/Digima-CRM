@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react';
-import { Camera, Image as ImageIcon, RefreshCw, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, RefreshCw, Trash2 } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { Button } from './ui/Button';
 
@@ -17,12 +17,8 @@ interface Props {
 
 const sizeLabel = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-/**
- * Two explicit buttons on phones ("Take photo" opens the camera, "Choose screenshot" the gallery) because one
- * ambiguous file input behaves differently on Android and iOS. Drag-and-drop works on desktop.
- */
+/** A single "Choose photo" button opens the file picker; drag-and-drop works on desktop. */
 export function ReceiptUpload({ file, previewUrl, optimising, error, onPick, onRemove }: Props) {
-  const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -38,8 +34,7 @@ export function ReceiptUpload({ file, previewUrl, optimising, error, onPick, onR
   return (
     <fieldset className="mb-4 min-w-0 border-0 p-0">
       <legend className="mb-1 p-0 font-semibold">Receipt</legend>
-      {/* Hidden native inputs; the buttons below are the accessible controls. */}
-      <input ref={cameraRef} type="file" accept={ACCEPT} capture="environment" hidden tabIndex={-1} onChange={(e) => (take(e.target.files?.[0]), (e.target.value = ''))} />
+      {/* Hidden native input; the buttons below are the accessible controls. */}
       <input ref={galleryRef} type="file" accept={ACCEPT} hidden tabIndex={-1} onChange={(e) => (take(e.target.files?.[0]), (e.target.value = ''))} />
 
       {file && previewUrl ? (
@@ -68,7 +63,7 @@ export function ReceiptUpload({ file, previewUrl, optimising, error, onPick, onR
             error && 'border-danger',
           )}
         >
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div>
             <Button
               id="proof"
               block
@@ -78,10 +73,7 @@ export function ReceiptUpload({ file, previewUrl, optimising, error, onPick, onR
               onClick={() => galleryRef.current?.click()}
               className="scroll-mb-32"
             >
-              <ImageIcon aria-hidden className="size-4" /> Choose screenshot
-            </Button>
-            <Button block disabled={optimising} onClick={() => cameraRef.current?.click()}>
-              <Camera aria-hidden className="size-4" /> Take photo
+              <ImageIcon aria-hidden className="size-4" /> Choose photo
             </Button>
           </div>
           <p className="mt-2 hidden text-center text-small text-text-muted lg:block">or drop an image here</p>

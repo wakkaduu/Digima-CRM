@@ -5,10 +5,11 @@ import { api, ApiError } from '../api/client';
 import { homePath, ME_KEY, safeNext, useMe } from '../api/auth';
 import type { User } from '../api/types';
 import { Message } from '../components/Message';
-import { TextField } from '../components/Field';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Field, TextField } from '../components/Field';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Checkbox } from '../components/ui/controls';
+import { BrandLockup } from '../components/shell/BrandLockup';
+import { Input } from '../components/ui/controls';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -63,48 +64,76 @@ export function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[420px] flex-col justify-center px-4 py-8">
-      <div className="mb-6 flex flex-col items-center gap-2 text-center">
-        <img src="/logo-mark.svg" alt="" width={48} height={48} className="size-12" />
-        <h1 className="text-title font-semibold">Log in to Digima</h1>
-      </div>
-      {message && <Message>{message}</Message>}
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-2">
+      <aside className="relative flex flex-col justify-between overflow-hidden p-8 text-white max-lg:hidden">
+        <img src="/login-hero.jpg" alt="" className="absolute inset-0 size-full object-cover" />
+        <div aria-hidden className="absolute inset-0 bg-text/60" />
+        <BrandLockup className="relative" />
+        <div className="relative max-w-[560px]">
+          <h2 className="mb-3 text-[3rem] font-bold leading-tight">Payments, reviewed in one place.</h2>
+          <p className="text-input font-medium">
+            Submit a receipt, match it to the estimate, and let the team approve it, with QuickBooks kept in step.
+          </p>
+        </div>
+      </aside>
 
-      <Card>
-        <form noValidate onSubmit={onSubmit}>
-          <TextField
-            id="email"
-            label="Email address"
-            type="email"
-            autoComplete="username"
-            value={email}
-            error={errors.email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setErrors((x) => ({ ...x, email: undefined }));
-            }}
-          />
-          <TextField
-            id="password"
-            label="Password"
-            type={showPw ? 'text' : 'password'}
-            autoComplete="current-password"
-            value={password}
-            error={errors.password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setErrors((x) => ({ ...x, password: undefined }));
-            }}
-          />
-          <Checkbox checked={showPw} onChange={(e) => setShowPw(e.target.checked)}>
-            Show password
-          </Checkbox>
-          <Button type="submit" variant="primary" block loading={busy} className="mt-2">
-            {busy ? 'Logging in…' : 'Log in'}
-          </Button>
-          <p className="mt-3 text-small text-text-muted">Forgot your password? Ask an admin to reset it.</p>
-        </form>
-      </Card>
-    </main>
+      <main className="flex items-center justify-center px-4 py-8 lg:px-16 lg:py-12">
+        <div className="w-full max-w-[640px]">
+          <BrandLockup className="mb-6 lg:hidden" />
+          <h1 className="mb-8 text-[2.25rem] font-bold leading-tight">Log in to your account</h1>
+          {message && <Message>{message}</Message>}
+
+          <div>
+            <form noValidate onSubmit={onSubmit} className="text-input [&_label]:text-input">
+              <TextField
+                id="email"
+                label="Email address"
+                type="email"
+                autoComplete="username"
+                placeholder="name@company.com"
+                value={email}
+                error={errors.email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setErrors((x) => ({ ...x, email: undefined }));
+                }}
+              />
+              <Field id="password" label="Password" error={errors.password}>
+                {(aria) => (
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPw ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      className="pr-12"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setErrors((x) => ({ ...x, password: undefined }));
+                      }}
+                      {...aria}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPw ? 'Hide password' : 'Show password'}
+                      aria-pressed={showPw}
+                      onClick={() => setShowPw((v) => !v)}
+                      className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-control text-text-muted hover:text-text"
+                    >
+                      {showPw ? <EyeOff aria-hidden className="size-5" /> : <Eye aria-hidden className="size-5" />}
+                    </button>
+                  </div>
+                )}
+              </Field>
+              <Button type="submit" variant="primary" size="lg" block loading={busy} className="mt-2">
+                {busy ? 'Logging in…' : 'Log in'}
+                {!busy && <ArrowRight aria-hidden className="size-4" />}
+              </Button>
+              <p className="mt-3 text-small text-text-muted">Forgot your password? Ask an admin to reset it.</p>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

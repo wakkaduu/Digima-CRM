@@ -8,6 +8,8 @@ export interface Column<T> {
   cell: (row: T) => ReactNode;
   /** Makes the column sortable. Sorting itself is done by the caller (ResultsView), so it can later be server-side. */
   sortValue?: (row: T) => string | number;
+  /** Sortable without an in-memory `sortValue` (the server sorts; the caller reacts to `onSortChange`). */
+  sortable?: boolean;
   align?: 'right';
   /** Keep this column visible while the table scrolls sideways (use on the first column). */
   pin?: boolean;
@@ -85,14 +87,14 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSortCha
                 <th
                   key={c.id}
                   scope="col"
-                  aria-sort={c.sortValue ? (sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none') : undefined}
+                  aria-sort={c.sortValue || c.sortable ? (sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none') : undefined}
                   className={cn(
                     'sticky top-0 border-b border-border bg-surface-sunk p-0 text-left font-semibold whitespace-nowrap',
                     c.align === 'right' && 'text-right',
                     c.pin ? 'left-0 z-[3]' : 'z-[2]',
                   )}
                 >
-                  {c.sortValue ? (
+                  {c.sortValue || c.sortable ? (
                     <button
                       type="button"
                       onClick={() => toggle(c)}

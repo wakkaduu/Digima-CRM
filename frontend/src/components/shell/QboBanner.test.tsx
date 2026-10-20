@@ -20,7 +20,7 @@ describe('QboBanner', () => {
   it('warns when QuickBooks is not connected, with a link to fix it', async () => {
     banner({ connected: false, needsReauth: false });
     expect(await screen.findByRole('alert')).toHaveTextContent('QuickBooks is not connected');
-    expect(screen.getByRole('link', { name: 'Reconnect QuickBooks' })).toHaveAttribute('href', '/setup');
+    expect(screen.getByRole('link', { name: 'Reconnect QuickBooks' })).toHaveAttribute('href', '/settings/integrations');
   });
 
   it('warns when the connection has expired', async () => {

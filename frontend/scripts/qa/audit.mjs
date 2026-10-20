@@ -8,7 +8,7 @@ const BASE = 'http://localhost:5199';
 const VIEWPORTS = [['360x640', 360, 640, true], ['390x844', 390, 844, true], ['640x360-landscape', 640, 360, true], ['768x1024', 768, 1024, true], ['1024x768', 1024, 768, false], ['1440x900', 1440, 900, false]];
 const PAGES = [
   ['login', null, '/login'], ['sales-submit', 'sales', '/payments/new'], ['sales-mine', 'sales', '/payments'], ['password', 'sales', '/password'],
-  ['admin-queue', 'admin', '/admin'], ['admin-review', 'admin', '/admin/p2'], ['admin-history', 'admin', '/admin?tab=history'], ['admin-history-detail', 'admin', '/admin/p20?tab=history'], ['setup', 'admin', '/setup'], ['notfound', 'admin', '/nope'],
+  ['admin-queue', 'admin', '/payments/review'], ['admin-review', 'admin', '/payments/review/p2'], ['admin-history', 'admin', '/payments/review?tab=history'], ['admin-history-detail', 'admin', '/payments/review/p20?tab=history'], ['setup', 'admin', '/settings/integrations'], ['dashboard-sales', 'sales', '/dashboard'], ['dashboard-admin', 'admin', '/dashboard'], ['customers', 'sales', '/customers'], ['customers-admin', 'admin', '/customers?tab=active&q=a'], ['customer-detail', 'sales', '/customers/51'], ['customer-estimates', 'sales', '/customers/50?tab=estimates'], ['customer-payments', 'admin', '/customers/50?tab=payments'], ['estimates', 'sales', '/estimates'], ['estimate-detail', 'sales', '/estimates/2'], ['notfound', 'admin', '/nope'],
 ];
 const only = process.argv[2]?.startsWith('--') ? undefined : process.argv[2]; const shots = process.argv.includes('--shots');
 const SHOTS = new URL('./shots/', import.meta.url);

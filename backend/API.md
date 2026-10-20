@@ -18,7 +18,7 @@ Internal payment automation portal: **Sales** submit payment proofs against Quic
 5. [Auth endpoints](#5-auth-endpoints)
 6. [QuickBooks connection (admin)](#6-quickbooks-connection-admin)
 7. [QuickBooks estimates](#7-quickbooks-estimates)
-8. [Payments — Sales](#8-payments--sales)
+8. [Payments — Sales](#8-payments--sales) (8b history and detail, 8c [customers and estimates](#8c-customers-and-estimates-crm-modules))
 9. [Payments — Admin](#9-payments--admin)
 10. [Error codes](#10-error-codes)
 11. [Data model](#11-data-model)
@@ -97,6 +97,10 @@ Guards used below: **Public** (no auth), **Auth** (any logged-in user), **Sales*
 | GET | `/api/auth/qbo/status` | Admin | QBO connection status |
 | GET | `/api/qbo/estimates` | Sales\|Admin | Search QBO estimates (`q`, `limit`) |
 | GET | `/api/config/banks` | Sales\|Admin | Modes of payment + default fee % |
+| GET | `/api/customers` | Sales\|Admin | QuickBooks customers with open estimates, balance, last payment (filtered, sorted, paged) |
+| GET | `/api/customers/:id` | Sales\|Admin | One customer with summary figures |
+| GET | `/api/estimates` | Sales\|Admin | Recent estimates of any status with payment progress (filtered, sorted, paged) |
+| GET | `/api/estimates/:id` | Sales\|Admin | One estimate with line items and payment progress |
 | POST | `/api/payments/submit` | Sales | Submit a payment with proof |
 | GET | `/api/payments` | Sales\|Admin | Filtered, sorted, paged payment list (sales: own; admin: all) |
 | GET | `/api/payments/counts` | Sales\|Admin | Navigation badge numbers |
@@ -178,8 +182,8 @@ Generates a random `state`, stores it in the session, and **302-redirects** to I
 ### `GET /api/auth/qbo/callback`
 Intuit redirects here (must match `QBO_REDIRECT_URI`). Validates `state` (constant-time compare), exchanges the code, stores tokens, then **302-redirects** to the frontend:
 
-- success → `{FRONTEND_URL}/setup?qbo=connected`
-- Intuit error → `{FRONTEND_URL}/setup?qbo=error&reason=<error>`
+- success → `{FRONTEND_URL}/settings/integrations?qbo=connected`
+- Intuit error → `{FRONTEND_URL}/settings/integrations?qbo=error&reason=<error>`
 - invalid/missing state → **400** JSON error (`Invalid OAuth state…`)
 
 ### `GET /api/auth/qbo/status`
@@ -324,6 +328,7 @@ Server-side filtered, sorted, paged list. **Sales always get only their own rows
 | `status` | comma list of `pending`, `approved`, `rejected` (e.g. `approved,rejected` for history) |
 | `q` | ≤ 100 chars; case-insensitive match on customer name or estimate number (admins also match reference no. and submitter name) |
 | `rep` | user id (UUID) of the submitter (admin only) |
+| `customerId`, `estimateId` | QuickBooks ids; only payments for that customer / estimate (sales still see only their own) |
 | `bank` | enum key as returned in `bankDepositedTo` |
 | `from`, `to` | `YYYY-MM-DD`, filter on submission date in Manila time; `to` is inclusive |
 | `sort` | `createdAt` \| `amountSubmitted` \| `customerName` \| `status`, then `:asc` or `:desc`. Default `createdAt:desc` |
@@ -373,6 +378,41 @@ Puts a payment rejected by **the same admin** back in the queue, **within 30 sec
 
 ### QuickBooks status additions
 `GET /api/auth/qbo/status` now also returns `needsReauth` (a connection exists but its refresh token expired), `expiresInDays`, and `lastVerifiedAt` (set whenever `?verify=true` succeeds; stored in `qbo_tokens.last_verified_at`).
+
+---
+
+## 8c. Customers and estimates (CRM modules)
+
+Read-only views over QuickBooks, joined with the portal's payments. Customers are **QuickBooks-synced only**: there is no create/update endpoint (creating customers in the CRM is out of scope until decided, see `UI_REDESIGN_TASKS.md` open question 3b). Lists are cached on the server for 60 s; a QuickBooks outage answers `409 QBO_NOT_CONNECTED` / `401 QBO_REAUTH_REQUIRED` like the other QuickBooks routes. Bad input → **400** with the first problem as the message.
+
+### `GET /api/customers` — Sales|Admin
+| Query | Rules |
+|---|---|
+| `q` | ≤ 100 chars; case-insensitive match on name, company, email, phone |
+| `status` | `active` \| `inactive` (QuickBooks `Active` flag) |
+| `sort` | `name` \| `openEstimates` \| `balance` \| `lastPayment`, then `:asc` or `:desc`. Default `name:asc` |
+| `page`, `pageSize` | page ≥ 1; pageSize 1–100, default 25 |
+
+**200** `{ items, total, page, pageSize, counts: { all, active, inactive } }`. `counts` follow the search but ignore `status` (for the tabs). Each item: `id, name, company, email, phone, active, balance` (QuickBooks open balance), `openEstimates` (Pending + Accepted, within the lookback window), `lastPaymentAt` (latest portal submission, or `null`).
+
+### `GET /api/customers/:id` — Sales|Admin
+**200** `{ customer, lookbackDays }`: the item fields plus `paidToDate` (approved portal payments), `pendingPayments` (count awaiting review) and `outstanding` (= QuickBooks balance). **404** if QuickBooks has no such customer.
+
+### `GET /api/estimates` — Sales|Admin
+Estimates dated within `ESTIMATE_LOOKBACK_DAYS`, **any status** (the picker endpoint `/api/qbo/estimates` still returns only payable ones).
+
+| Query | Rules |
+|---|---|
+| `q` | ≤ 100 chars; estimate number or customer name |
+| `status` | `Pending` \| `Accepted` \| `Closed` \| `Rejected` |
+| `customerId` | QuickBooks customer id |
+| `sort` | `date` \| `number` \| `customer` \| `total`, then `:asc` or `:desc`. Default `date:desc` |
+| `page`, `pageSize` | as above |
+
+**200** `{ items, total, page, pageSize, counts, lookbackDays }`. `counts` is `{ all, Pending, Accepted, Closed, Rejected }` ignoring the `status` filter. Items carry the estimate fields plus `pendingAmount` and `approvedAmount` (portal payments, all reps).
+
+### `GET /api/estimates/:id` — Sales|Admin
+**200** `{ estimate }`: the list fields plus `lines` (`description, quantity, amount`), `memo` and `linkedInvoiceIds`. Works for estimates outside the lookback window. **404** if QuickBooks has no such estimate.
 
 ---
 

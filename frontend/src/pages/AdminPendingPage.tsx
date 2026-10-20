@@ -9,12 +9,14 @@ import { HistoryList } from '../components/admin/HistoryList';
 import { PaymentHistoryDetail } from '../components/admin/PaymentHistoryDetail';
 import { PaymentReview, type ReviewActions } from '../components/admin/PaymentReview';
 import { QueueList } from '../components/admin/QueueList';
+import { QueueSkeleton } from '../components/admin/QueueSkeleton';
 import { ShortcutSheet } from '../components/admin/ShortcutSheet';
 import { useQueueShortcuts } from '../components/admin/useQueueShortcuts';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
-import { EmptyState, ErrorState, Skeleton } from '../components/ui/States';
+import { SkeletonCardList } from '../components/ui/Skeletons';
+import { EmptyState, ErrorState } from '../components/ui/States';
 import { cn } from '../lib/cn';
 import { bankLabel } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
@@ -33,7 +35,7 @@ const estimateOf = (p: PendingPayment) => p.qboEstimateNumber || p.qboEstimateId
 
 /**
  * Admin review queue. Phone: the list, then a full-screen review with a sticky Approve / Reject bar.
- * From 1024px: list on the left, review on the right (the route keeps the selection: /admin/:id).
+ * From 1024px: list on the left, review on the right (the route keeps the selection: /payments/review/:id).
  * The History tab lists reviewed payments from the server, paged, and opens them read-only.
  */
 export default function AdminPendingPage() {
@@ -94,7 +96,7 @@ export default function AdminPendingPage() {
   const selectedIdx = rows.findIndex((p) => p.id === id);
 
   // The query string travels with the selection, so filters survive opening a payment.
-  const go = (p?: { id: string }) => navigate({ pathname: p ? `/admin/${p.id}` : '/admin', search }, { replace: !!id });
+  const go = (p?: { id: string }) => navigate({ pathname: p ? `/payments/review/${p.id}` : '/payments/review', search }, { replace: !!id });
   useQueueShortcuts({
     next: () => go(rows[selectedIdx + 1] ?? (selectedIdx < 0 ? rows[0] : undefined)),
     prev: () => selectedIdx > 0 && go(rows[selectedIdx - 1]),
@@ -137,13 +139,7 @@ export default function AdminPendingPage() {
         }
       />
 
-      {isPending && !error && (
-        <div role="status" aria-label="Loading payments" className="space-y-2">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      )}
+      {isPending && !error && <QueueSkeleton opened={!!id} />}
       {error && <ErrorState message={error.message} onRetry={() => refetch()} />}
 
       {data && (
@@ -169,12 +165,7 @@ export default function AdminPendingPage() {
 
             {tab === 'history' ? (
               <>
-                {historyQuery.isPending && !historyQuery.error && (
-                  <div role="status" aria-label="Loading history" className="space-y-2">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                )}
+                {historyQuery.isPending && !historyQuery.error && <SkeletonCardList label="Loading history" count={4} />}
                 {historyQuery.error && <ErrorState message={historyQuery.error.message} onRetry={() => historyQuery.refetch()} />}
                 {historyQuery.data && historyRows.length === 0 && (
                   <Card>

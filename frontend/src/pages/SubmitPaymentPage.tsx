@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
 import { api, apiUpload, ApiError } from '../api/client';
 import { useMe } from '../api/auth';
+import { useEstimate } from '../api/crm';
 import { MINE_KEY, RECEIVERS_KEY, useBankConfig, useEstimateProbe, useRecentEstimates } from '../api/payments';
 import type { Estimate, Receiver } from '../api/types';
 import { EstimatePicker, remainingOf } from '../components/EstimatePicker';
@@ -71,6 +72,11 @@ export function SubmitPaymentPage() {
   const [draftRestored, setDraftRestored] = useState(false);
   const successRef = useRef<HTMLHeadingElement>(null);
 
+  // "Record payment" on an estimate arrives as /payments/new?estimateId=123 and preselects it.
+  const [params, setParams] = useSearchParams();
+  const presetId = params.get('estimateId');
+  const preset = useEstimate(draftReady ? (presetId ?? undefined) : undefined);
+
   // Estimates are searched on the server as the rep types. This probe only tells us whether QuickBooks answers.
   const estimatesQuery = useEstimateProbe();
   const recents = useRecentEstimates(!!me).data ?? [];
@@ -120,6 +126,28 @@ export function SubmitPaymentPage() {
     }
     setDraftReady(true);
   }, [draftReady, me, draftKey, bankKey]);
+
+  useEffect(() => {
+    const e = preset.data;
+    if (!e || !presetId || e.status === 'Rejected') return;
+    if (selected?.id !== e.id) setAmount(''); // an amount typed for another estimate would be wrong here
+    setSelected({
+      id: e.id,
+      docNumber: e.docNumber,
+      customerId: e.customerId,
+      customerName: e.customerName ?? '',
+      totalAmount: e.totalAmount,
+      txnDate: e.txnDate,
+      expirationDate: e.expirationDate,
+      status: e.status ?? '',
+      email: e.email,
+      pendingAmount: e.pendingAmount,
+      approvedAmount: e.approvedAmount,
+    });
+    setParams({}, { replace: true }); // used once, so a refresh does not undo later edits
+    setTimeout(() => document.getElementById('amount')?.focus());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset.data, presetId]);
 
   // Autosave the draft on every change.
   useEffect(() => {

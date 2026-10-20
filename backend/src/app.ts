@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.routes';
 import qboRoutes from './routes/qbo.routes';
 import paymentRoutes from './routes/payment.routes';
 import configRoutes from './routes/config.routes';
+import { customerRoutes, estimateRoutes } from './routes/crm.routes';
 
 const app = express();
 const isProd = env.NODE_ENV === 'production';
@@ -54,6 +55,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/qbo', qboRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/estimates', estimateRoutes);
 
 // JSON API only. The React app is served separately (Vite on :5173, which proxies /api here).
 app.use(notFound);

@@ -84,6 +84,9 @@ export const listQuerySchema = z.object({
     q: z.preprocess(blankToUndefined, z.string().trim().max(100).optional()),
     rep: z.preprocess(blankToUndefined, z.string().uuid('rep must be a user id').optional()),
     bank: z.preprocess(blankToUndefined, z.enum(BANK_KEYS).optional()),
+    // Payments of one QuickBooks customer / estimate (the Customers and Estimates modules).
+    customerId: z.preprocess(blankToUndefined, z.string().regex(/^\d+$/, 'customerId must be a QuickBooks id').optional()),
+    estimateId: z.preprocess(blankToUndefined, z.string().regex(/^\d+$/, 'estimateId must be a QuickBooks id').optional()),
     from: z.preprocess(blankToUndefined, day.optional()),
     to: z.preprocess(blankToUndefined, day.optional()),
     sort: z.preprocess(

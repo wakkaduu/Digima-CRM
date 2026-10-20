@@ -5,7 +5,8 @@ import type { AuditEvent } from '../../api/types';
 import { bankLabel, dateTime, dayLabel, peso } from '../../lib/format';
 import { Message } from '../Message';
 import { Card } from '../ui/Card';
-import { ErrorState, Skeleton } from '../ui/States';
+import { DetailSkeleton } from '../ui/Skeletons';
+import { ErrorState } from '../ui/States';
 import { StatusBadge } from '../ui/StatusBadge';
 import { ReceiptViewer } from './ReceiptViewer';
 
@@ -22,16 +23,11 @@ export function PaymentHistoryDetail({ id }: { id: string }) {
 
   return (
     <div>
-      <Link to={{ pathname: '/admin', search }} className="mb-3 inline-flex min-h-(--control-h) items-center gap-1 text-accent underline lg:hidden">
+      <Link to={{ pathname: '/payments/review', search }} className="mb-3 inline-flex min-h-(--control-h) items-center gap-1 text-accent underline lg:hidden">
         <ArrowLeft aria-hidden className="size-4" /> Back to the list
       </Link>
 
-      {isPending && !error && (
-        <div role="status" aria-label="Loading payment" className="space-y-3">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      )}
+      {isPending && !error && <DetailSkeleton label="Loading payment" breadcrumb={false} cards={2} />}
       {error && <ErrorState message={error.message} onRetry={() => refetch()} />}
 
       {p && (

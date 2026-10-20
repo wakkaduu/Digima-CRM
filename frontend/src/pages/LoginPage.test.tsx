@@ -8,7 +8,8 @@ const page = (
   <Routes>
     <Route path="/login" element={<LoginPage />} />
     <Route path="/" element={<p>Home screen</p>} />
-    <Route path="/admin" element={<p>Admin screen</p>} />
+    <Route path="/payments/review" element={<p>Admin screen</p>} />
+    <Route path="/dashboard" element={<p>Dashboard screen</p>} />
   </Routes>
 );
 
@@ -40,7 +41,7 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
   });
 
-  it('sends an admin to /admin after login', async () => {
+  it('sends an admin to the dashboard after login', async () => {
     const admin = { id: '1', name: 'Ann', email: 'a@b.co', role: 'admin', mustChangePassword: false };
     mockApi({
       'GET /api/auth/me': [200, { user: null }],
@@ -52,6 +53,6 @@ describe('LoginPage', () => {
     await userEvent.type(screen.getByLabelText('Password'), 'secret123');
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
-    await waitFor(() => expect(screen.getByText('Admin screen')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Dashboard screen')).toBeInTheDocument());
   });
 });

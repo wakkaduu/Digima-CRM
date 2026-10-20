@@ -76,10 +76,13 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
         toast({
           type: 'error',
           text: 'The QuickBooks connection expired. Reconnect it, then approve again.',
-          action: { label: 'Reconnect', onClick: () => navigate('/setup') },
+          action: { label: 'Reconnect', onClick: () => navigate('/settings/integrations') },
         });
+      } else if (err instanceof ApiError && err.code === 'NO_INVOICE') {
+        // Not a failure of the portal: the admin has one step to do in QuickBooks first.
+        toast({ type: 'warning', title: 'Create the invoice in QuickBooks first', text: err.message });
       } else {
-        toast({ type: 'error', text: err.message });
+        toast({ type: 'error', title: 'Could not approve', text: err.message });
       }
     },
   });
@@ -109,7 +112,7 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
       await api(`/api/payments/reject/${p.id}/undo`, { method: 'POST' });
       void qc.invalidateQueries({ queryKey: PAYMENTS_KEY });
       toast({ text: `Restored ${p.customerName} to the queue.` });
-      navigate({ pathname: `/admin/${p.id}`, search });
+      navigate({ pathname: `/payments/review/${p.id}`, search });
     } catch (err) {
       toast({ type: 'error', text: err instanceof ApiError ? err.message : 'Could not undo the rejection.' });
     }
@@ -145,7 +148,7 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
 
   return (
     <div>
-      <Link to={{ pathname: '/admin', search }} className="mb-3 inline-flex min-h-(--control-h) items-center gap-1 text-accent underline lg:hidden">
+      <Link to={{ pathname: '/payments/review', search }} className="mb-3 inline-flex min-h-(--control-h) items-center gap-1 text-accent underline lg:hidden">
         <ArrowLeft aria-hidden className="size-4" /> Back to queue
       </Link>
 

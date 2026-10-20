@@ -35,7 +35,7 @@ const focusInfo = (page) => page.evaluate(() => {
 
 // B. Dialog focus trap and focus return (admin review)
 {
-  const { ctx, page } = await open({ width: 1440, height: 900 }, 'admin', '/admin/p1');
+  const { ctx, page } = await open({ width: 1440, height: 900 }, 'admin', '/payments/review/p1');
   const reject = page.getByRole('button', { name: 'Reject', exact: true });
   await reject.focus(); await page.keyboard.press('Enter');
   const dlg = page.getByRole('dialog', { name: /Reject/ });

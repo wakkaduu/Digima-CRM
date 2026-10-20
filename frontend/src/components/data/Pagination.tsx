@@ -27,7 +27,7 @@ export function Pagination({ page, size, total, onPage, onSize }: PagesProps) {
         {rangeText(from, to, total)}
       </p>
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-2 text-text-muted">
+        <label className="flex items-center gap-2 whitespace-nowrap text-text-muted">
           Rows per page
           <Select
             value={size}

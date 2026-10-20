@@ -30,13 +30,19 @@ Motion: spinners and skeletons opt out per element, and a global `prefers-reduce
 - `Input`, `Select`, `Textarea`, `Checkbox`, `RadioCards`; `Field` (in `components/Field.tsx`) wires label, hint and error via `aria-describedby`
 - `Card`, `PageHeader`, `StatusBadge` / `NewDot` / `CountChip` / `NeutralBadge`, `RelativeTime`
 - `Dialog` (native `<dialog>`: a bottom sheet under 640px, centred above; focus trap and focus return come from the browser), `ConfirmDialog`
-- `Toast` (`useToast()`; errors persist; optional action such as Undo), `Skeleton`, `EmptyState`, `ErrorState`, `StickyActionBar`
+- `Toast` (`useToast()`; types success, info, warning, error with an optional `title`; errors and warnings persist until dismissed; optional action such as Undo; top right on desktop, above the tab bar on phones), `Skeleton` and the layout-matched `Skeletons` (`ResultsSkeleton`, `SkeletonCardList`, `SkeletonTiles`, `SkeletonRows`, `DetailSkeleton`, `PageSkeleton`; `StatTile` takes `loading`), `EmptyState`, `ErrorState`, `StickyActionBar`
 
-`components/shell`: `AppShell` (tab bar under 1024px, sidebar from 1024px), `Sidebar`, `TabBar`, `AccountMenu`, `BrandLockup`, `QboBanner`.
+`components/shell`: `AppShell` (tab bar under 1024px, sidebar from 1024px), `Sidebar` (the selected item is a tinted fill, no border), `TopBar` (search, alerts, Submit payment) with `AlertsLink` and `SearchButton` for the phone header, `CommandPalette` (Ctrl/⌘+K), `TabBar`, `AccountMenu`, `BrandLockup`, `QboBanner`.
+
+`components/dashboard`: `SalesDashboard`, `AdminDashboard`, `Section` and `Row` (a titled block of hairline-separated rows). `components/ui/StatTile` is the headline-figure tile (also used on the customer page).
 
 `components/data` (lists)
 - `ResultsView` = `DataTable` (desktop) or `DataList` + `ListRow` (phone), with sorting and paging; `Pagination` and `LoadMore`
 - `FilterBar` (tabs, search, dropdown filters, chips) and `useUrlFilters` (filters live in the URL)
+
+`components/data` also has `ServerResults`: the same table-or-cards switch for lists the **server** sorts and pages (Customers, Estimates); columns marked `sortable` hand the sort to the caller.
+
+`components/crm`: `EstimateProgress` (approved / awaiting review / still to collect, always written out), `LinkedPayments` (payments of one customer or estimate). `components/ui/Tabs` is the page-tabs pattern (arrow keys, selection kept in the URL).
 
 `components/admin`: `PaymentReview`, `ReceiptViewer`, `ApproveDialog`, `RejectDialog`, `QueueList`, `HistoryList`, `PaymentHistoryDetail`, `ShortcutSheet`, `useQueueShortcuts`.
 
