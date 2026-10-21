@@ -8,7 +8,7 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import { Button } from './ui/Button';
 import { Input } from './ui/controls';
 import { Dialog } from './ui/Dialog';
-import { NeutralBadge } from './ui/StatusBadge';
+import { EstimateStatusBadge } from './ui/StatusBadge';
 
 export const remainingOf = (e: Estimate) => Math.max(0, e.totalAmount - e.pendingAmount - e.approvedAmount);
 const statusText = (s: string) => (s === 'Closed' ? 'Invoiced (closed in QuickBooks)' : s);
@@ -47,7 +47,7 @@ function EstimateRow({ e }: { e: Estimate }) {
       </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-2 text-small text-text-muted">
         <span className="tabular-nums">{peso(e.totalAmount)}</span>
-        <NeutralBadge>{statusText(e.status)}</NeutralBadge>
+        <EstimateStatusBadge status={e.status} label={statusText(e.status)} />
       </div>
     </>
   );

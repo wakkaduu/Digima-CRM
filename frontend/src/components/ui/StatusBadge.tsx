@@ -60,3 +60,40 @@ export function NeutralBadge({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+
+const TONES: Record<Tone, string> = {
+  neutral: 'bg-surface-sunk text-text-muted',
+  info: 'bg-info-bg text-info',
+  success: 'bg-success-bg text-success',
+  warning: 'bg-warning-bg text-warning',
+  danger: 'bg-danger-bg text-danger',
+};
+
+/** Quiet colour-coded tag for QuickBooks / CRM states: tinted fill, no border or icon, a small dot. The text always names the state. */
+export function ToneBadge({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2 py-px rounded-badge text-small font-semibold whitespace-nowrap',
+        TONES[tone],
+      )}
+    >
+      <span aria-hidden className="size-1.5 rounded-full bg-current opacity-60" />
+      {children}
+    </span>
+  );
+}
+
+const ESTIMATE_TONE: Record<string, Tone> = { Pending: 'warning', Accepted: 'success', Closed: 'danger', Rejected: 'danger' };
+
+/** A QuickBooks estimate's state. Unknown states fall back to neutral. */
+export function EstimateStatusBadge({ status, label }: { status?: string; label?: string }) {
+  return <ToneBadge tone={ESTIMATE_TONE[status ?? ''] ?? 'neutral'}>{label ?? status ?? 'Unknown'}</ToneBadge>;
+}
+
+/** A customer's active / inactive state. */
+export function ActiveBadge({ active }: { active: boolean }) {
+  return <ToneBadge tone={active ? 'success' : 'danger'}>{active ? 'Active' : 'Inactive'}</ToneBadge>;
+}

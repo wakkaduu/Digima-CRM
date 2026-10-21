@@ -25,7 +25,7 @@ app.use(
             directives: {
                 'script-src': ["'self'"],
                 'style-src': ["'self'", "'unsafe-inline'"], // React inline style attributes
-                'img-src': ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com'],
+                'img-src': ["'self'", 'data:', 'blob:'],
                 'upgrade-insecure-requests': isProd ? [] : null, // keep http://localhost working
             },
         },

@@ -12,6 +12,7 @@ import {
 import { receiptUrls, toDetail, toListItem } from '../serializers/payment.serializer';
 import * as qbo from '../services/qbo.service';
 import * as cloud from '../services/cloudinary.service';
+import * as storage from '../services/storage.service';
 import { resizedPublicUrl } from '../utils/receiptUrl';
 import HttpError from '../utils/HttpError';
 import asyncHandler from '../utils/asyncHandler';
@@ -88,8 +89,8 @@ export const submit = asyncHandler(async (req, res) => {
         }
     }
 
-    // 3. Upload receipt (private), then save. Roll back the image if the DB write fails.
-    const image = await cloud.uploadProof(req.file!.buffer);
+    // 3. Upload receipt (private bucket), then save. Roll back the image if the DB write fails.
+    const image = await storage.uploadProof(req.file!.buffer);
     try {
         const payment = await paymentModel.create({
             customerName: estimate.customerName || 'Unknown customer',
@@ -102,8 +103,8 @@ export const submit = asyncHandler(async (req, res) => {
             receivedOn: new Date(`${receivedOn}T00:00:00Z`),
             receivedBy: receiver.name,
             receivedById: receiver.id,
-            proofImageUrl: image.url,
-            proofPublicId: image.publicId,
+            proofImageUrl: image.location,
+            proofKey: image.key,
             submittedBy: req.user.name,
             submittedById: req.user.id,
             idempotencyKey,
@@ -111,7 +112,7 @@ export const submit = asyncHandler(async (req, res) => {
         });
         res.status(201).json({ payment });
     } catch (err) {
-        await cloud.deleteImage(image.publicId);
+        await storage.deleteReceipt(image.key);
         // Two identical requests raced: the other one won. Answer with its payment.
         if (idempotencyKey && (err as { code?: string }).code === 'P2002') {
             const earlier = await paymentModel.findByIdempotencyKey(req.user.id, idempotencyKey);
@@ -151,17 +152,32 @@ export const receipt = asyncHandler(async (req, res) => {
 
     const size = receiptQuerySchema.safeParse(req.query);
     if (!size.success) throw new HttpError(400, size.error.issues[0].message);
-    const width = size.data.w;
 
     const payment = await paymentModel.findReceiptInfo(idCheck.data);
     if (!payment) throw new HttpError(404, 'Receipt not found');
+    await sendReceipt(res, payment, req.user, size.data.w);
+});
 
+type ReceiptRow = NonNullable<Awaited<ReturnType<typeof paymentModel.findReceiptInfo>>>;
+
+export async function sendReceipt(res: Response, payment: ReceiptRow, user: Request['user'], width?: number) {
     // Admins can open any receipt; sales reps only their own.
-    if (req.user.role !== 'admin' && payment.submittedById !== req.user.id) {
+    if (user.role !== 'admin' && payment.submittedById !== user.id) {
         throw new HttpError(403, 'You do not have access to this receipt');
     }
 
-    // Older rows (before Phase 5A) have no publicId and a public URL.
+    if (payment.proofKey) {
+        const { body, contentType } = await storage.getReceipt(payment.proofKey, width);
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'private, max-age=3600',
+            'X-Content-Type-Options': 'nosniff',
+        });
+        return res.send(body);
+    }
+
+    // Legacy rows still on Cloudinary (until scripts/migrate-receipts-to-s3.ts has run). Rows from before
+    // Phase 5A have no publicId and a public URL.
     const source = payment.proofPublicId
         ? cloud.signedUrl(payment.proofPublicId, width)
         : width
@@ -180,7 +196,7 @@ export const receipt = asyncHandler(async (req, res) => {
         'X-Content-Type-Options': 'nosniff',
     });
     res.send(Buffer.from(await upstream.arrayBuffer()));
-});
+}
 
 // GET /api/payments/counts  -> numbers for the navigation badges (admin: awaiting review; sales: reviewed, not yet read)
 export const counts = asyncHandler(async (req, res) => {

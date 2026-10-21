@@ -51,7 +51,8 @@ model Payment {
   // User 
   submittedById   String?   @map("submitted_by_id") @db.Uuid
   submittedByUser User?     @relation("PaymentSubmittedBy", fields: [submittedById], references: [id])
-  proofPublicId   String?   @map("proof_public_id")
+  proofPublicId   String?   @map("proof_public_id") // legacy: Cloudinary public id
+  proofKey        String?   @map("proof_key") // object storage key prefix; set = receipt lives in S3
   salesSeenAt     DateTime? @map("sales_seen_at")
 
   // Who approved / rejected it (names alone are not unique). Needed for the 30-second reject undo.

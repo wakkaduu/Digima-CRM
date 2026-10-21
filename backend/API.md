@@ -2,7 +2,7 @@
 
 Internal payment automation portal: **Sales** submit payment proofs against QuickBooks Online (QBO) estimates, **Admins** approve or reject them, and approval posts the payment to QBO.
 
-- **Stack:** Node ≥ 18.18, Express 4, TypeScript, Prisma (PostgreSQL), Zod, Cloudinary (receipt storage), `intuit-oauth` (QBO)
+- **Stack:** Node ≥ 18.18, Express 4, TypeScript, Prisma (PostgreSQL), Zod, S3-compatible object storage (receipts), `intuit-oauth` (QBO)
 - **Base URL (dev):** `http://localhost:3000` — all routes are under `/api`
 - **Format:** JSON, except `POST /api/payments/submit` (multipart) and `GET /api/payments/:id/receipt` (image) and the QBO OAuth redirects
 - **Frontend:** served separately (Vite on `:5173`, proxies `/api` here)
@@ -55,7 +55,7 @@ Every error uses one shape:
 | 409 | Conflict: duplicate payment, already processed, QBO not connected |
 | 422 | Business-rule violation (amounts, invalid receiver, rejected estimate) |
 | 429 | Login rate limit exceeded |
-| 502 | QuickBooks or Cloudinary upstream failure |
+| 502 | QuickBooks or receipt storage upstream failure |
 
 ### Money and dates
 
@@ -65,7 +65,7 @@ Every error uses one shape:
 
 ### Request limits
 
-JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP allows images from `res.cloudinary.com`). Responses are gzip-compressed.
+JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP allows images from `'self'`, `data:` and `blob:` only). Responses are gzip-compressed.
 
 ---
 
@@ -258,7 +258,7 @@ Errors: `409` `QBO_NOT_CONNECTED`, `401` `QBO_REAUTH_REQUIRED`, `502` QuickBooks
 | `referenceNo` | no | Spaces removed, upper-cased; 4–60 chars if given. Ignored for `Cash` |
 | `force` | no | `"true"` skips the soft duplicate warning |
 
-Server flow: validate → check receiver → **re-fetch estimate from QBO** (customer data is never trusted from the client; rejected estimates refused) → duplicate checks → upload to Cloudinary → save (image deleted if the DB write fails).
+Server flow: validate → check receiver → **re-fetch estimate from QBO** (customer data is never trusted from the client; rejected estimates refused) → duplicate checks → upload to the S3 bucket (original plus 400/800/1200 px copies) → save (image deleted if the DB write fails).
 
 **201**
 ```json
@@ -307,14 +307,14 @@ The caller's **30 most recent** submissions, newest first.
 Marks all of the caller's approved/rejected payments as seen. **200** `{ "ok": true }`.
 
 ### `GET /api/payments/:id/receipt` — Sales|Admin
-Streams the receipt image (`Content-Type: image/*`, `Cache-Control: private, max-age=3600`). The image is fetched server-side from Cloudinary via a signed URL, so the Cloudinary link is never exposed. Use it directly as an `<img src>`.
+Streams the receipt image (`Content-Type: image/*`, `Cache-Control: private, max-age=3600`). The image is read server-side from a private S3 bucket (receipts submitted before the move may still be read from Cloudinary), so no storage link is ever exposed. Use it directly as an `<img src>`.
 
 | Status | When |
 |---|---|
 | 400 | `:id` is not a UUID |
 | 403 | Sales user requesting someone else's receipt |
 | 404 | Payment not found |
-| 502 | Cloudinary fetch failed or not an image |
+| 502 | Receipt storage read failed or not an image |
 
 ---
 
@@ -374,7 +374,7 @@ Puts a payment rejected by **the same admin** back in the queue, **within 30 sec
 `GET /api/qbo/estimates?q=&limit=` — `limit` (1–50) caps the result and `total` reports all matches: `{ "count": 20, "total": 87, "estimates": [...] }`. Without `limit` every match is returned, as before. Portal totals are only looked up for the rows returned.
 
 ### Resized receipts
-`GET /api/payments/:id/receipt?w=800` returns a resized copy (width 400, 800 or 1200; never upscaled; automatic quality and format). Any other width → **400**. List responses carry `thumbUrl` (`?w=800`); `proofImageUrl` stays the original.
+`GET /api/payments/:id/receipt?w=800` returns a resized copy (width 400, 800 or 1200; never upscaled; WebP, generated once at upload time). Any other width → **400**. List responses carry `thumbUrl` (`?w=800`); `proofImageUrl` stays the original.
 
 ### QuickBooks status additions
 `GET /api/auth/qbo/status` now also returns `needsReauth` (a connection exists but its refresh token expired), `expiresInDays`, and `lastVerifiedAt` (set whenever `?verify=true` succeeds; stored in `qbo_tokens.last_verified_at`).

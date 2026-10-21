@@ -10,7 +10,7 @@ import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DetailSkeleton } from '../components/ui/Skeletons';
 import { ErrorState } from '../components/ui/States';
-import { NeutralBadge } from '../components/ui/StatusBadge';
+import { EstimateStatusBadge } from '../components/ui/StatusBadge';
 import { dayLabel, peso } from '../lib/format';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { estimateNo } from './EstimatesPage';
@@ -63,7 +63,7 @@ export default function EstimateDetailPage() {
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 [&_dt]:text-text-muted">
           <dt>Status</dt>
           <dd>
-            <NeutralBadge>{e.status ?? 'Unknown'}</NeutralBadge>
+            <EstimateStatusBadge status={e.status} />
           </dd>
           <dt>Date</dt>
           <dd>{dayLabel(e.txnDate)}</dd>

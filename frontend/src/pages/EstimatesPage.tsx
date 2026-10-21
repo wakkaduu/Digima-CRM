@@ -11,7 +11,7 @@ import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ResultsSkeleton } from '../components/ui/Skeletons';
 import { EmptyState, ErrorState } from '../components/ui/States';
-import { NeutralBadge } from '../components/ui/StatusBadge';
+import { EstimateStatusBadge } from '../components/ui/StatusBadge';
 import { dayLabel, peso } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -32,7 +32,7 @@ const COLUMNS: Column<EstimateRow>[] = [
   { id: 'number', header: 'Estimate', sortable: true, pin: true, className: 'whitespace-nowrap font-semibold', cell: (e) => `#${estimateNo(e)}` },
   { id: 'customer', header: 'Customer', sortable: true, cell: (e) => e.customerName ?? '—' },
   { id: 'date', header: 'Date', sortable: true, className: 'whitespace-nowrap', cell: (e) => dayLabel(e.txnDate) },
-  { id: 'status', header: 'Status', cell: (e) => <NeutralBadge>{e.status ?? 'Unknown'}</NeutralBadge> },
+  { id: 'status', header: 'Status', cell: (e) => <EstimateStatusBadge status={e.status} /> },
   { id: 'total', header: 'Total', align: 'right', sortable: true, cell: (e) => peso(e.totalAmount) },
   {
     id: 'progress',

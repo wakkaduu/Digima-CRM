@@ -26,7 +26,7 @@ export const findById = (id: string) => prisma.payment.findUnique({ where: { id 
 export const findReceiptInfo = (id: string) =>
     prisma.payment.findUnique({
         where: { id },
-        select: { submittedById: true, proofImageUrl: true, proofPublicId: true },
+        select: { submittedById: true, proofImageUrl: true, proofPublicId: true, proofKey: true },
     });
 
 export const listPending = () =>

@@ -11,7 +11,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { ResultsSkeleton } from '../components/ui/Skeletons';
 import { RelativeTime } from '../components/ui/RelativeTime';
 import { EmptyState, ErrorState } from '../components/ui/States';
-import { NeutralBadge } from '../components/ui/StatusBadge';
+import { ActiveBadge } from '../components/ui/StatusBadge';
 import { peso } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -37,7 +37,7 @@ const COLUMNS: Column<CustomerRow>[] = [
       </>
     ),
   },
-  { id: 'status', header: 'Status', cell: (c) => <NeutralBadge>{c.active ? 'Active' : 'Inactive'}</NeutralBadge> },
+  { id: 'status', header: 'Status', cell: (c) => <ActiveBadge active={c.active} /> },
   { id: 'openEstimates', header: 'Open estimates', align: 'right', sortable: true, cell: (c) => c.openEstimates },
   { id: 'balance', header: 'Balance', align: 'right', sortable: true, cell: (c) => peso(c.balance) },
   { id: 'lastPayment', header: 'Last payment', sortable: true, className: 'whitespace-nowrap', cell: (c) => (c.lastPaymentAt ? <RelativeTime value={c.lastPaymentAt} /> : <span className="text-text-muted">None yet</span>) },
@@ -113,7 +113,7 @@ export default function CustomersPage() {
               title={c.name}
               amount={c.balance > 0 ? peso(c.balance) : undefined}
               meta={`${c.openEstimates} open ${c.openEstimates === 1 ? 'estimate' : 'estimates'}${c.lastPaymentAt ? '' : ' · No payments yet'}`}
-              badge={!c.active ? <NeutralBadge>Inactive</NeutralBadge> : undefined}
+              badge={!c.active ? <ActiveBadge active={false} /> : undefined}
               note={c.lastPaymentAt ? <>Last payment <RelativeTime value={c.lastPaymentAt} /></> : undefined}
             />
           )}

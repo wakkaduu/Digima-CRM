@@ -8,10 +8,19 @@ const schema = z.object({
     FRONTEND_URL: z.string().url().default('http://localhost:5173'), // where the QBO callback sends the browser back to
     DATABASE_URL: z.string().min(1),
 
-    CLOUDINARY_CLOUD_NAME: z.string().min(1),
-    CLOUDINARY_API_KEY: z.string().min(1),
-    CLOUDINARY_API_SECRET: z.string().min(1),
-    CLOUDINARY_FOLDER: z.string().default('payment-proofs'),
+    // Receipt storage: any S3-compatible object store (UpCloud Object Storage in production).
+    S3_ENDPOINT: z.string().url(),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_BUCKET: z.string().min(1),
+    S3_ACCESS_KEY_ID: z.string().min(1),
+    S3_SECRET_ACCESS_KEY: z.string().min(1),
+    S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+    S3_PREFIX: z.string().default('payment-proofs'),
+
+    // Legacy: only needed while old receipts are still on Cloudinary (until scripts/migrate-receipts-to-s3.ts has run).
+    CLOUDINARY_CLOUD_NAME: z.string().optional(),
+    CLOUDINARY_API_KEY: z.string().optional(),
+    CLOUDINARY_API_SECRET: z.string().optional(),
 
     QBO_CLIENT_ID: z.string().min(1),
     QBO_CLIENT_SECRET: z.string().min(1),

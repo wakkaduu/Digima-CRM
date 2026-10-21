@@ -9,7 +9,7 @@ import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DetailSkeleton, SkeletonCardList } from '../components/ui/Skeletons';
 import { EmptyState, ErrorState } from '../components/ui/States';
-import { NeutralBadge } from '../components/ui/StatusBadge';
+import { ActiveBadge, EstimateStatusBadge } from '../components/ui/StatusBadge';
 import { RelativeTime } from '../components/ui/RelativeTime';
 import { StatTile } from '../components/ui/StatTile';
 import { TabPanel, Tabs } from '../components/ui/Tabs';
@@ -47,7 +47,7 @@ function CustomerEstimates({ customerId }: { customerId: string }) {
               <ListRow
                 title={`#${estimateNo(e)}`}
                 amount={peso(e.totalAmount)}
-                meta={<>{dayLabel(e.txnDate)} · <NeutralBadge>{e.status ?? 'Unknown'}</NeutralBadge></>}
+                meta={<>{dayLabel(e.txnDate)} · <EstimateStatusBadge status={e.status} /></>}
                 note={<EstimateProgress compact total={e.totalAmount} approved={e.approvedAmount} pending={e.pendingAmount} />}
               />
             </button>
@@ -87,7 +87,7 @@ export default function CustomerDetailPage() {
       <PageHeader
         title={c.name}
         breadcrumb={[{ label: 'Customers', to: '/customers' }]}
-        description={<NeutralBadge>{c.active ? 'Active' : 'Inactive'}</NeutralBadge>}
+        description={<ActiveBadge active={c.active} />}
       />
 
       <Tabs label="Customer sections" tabs={TABS} value={tab} onChange={(t) => set({ tab: t })} />
