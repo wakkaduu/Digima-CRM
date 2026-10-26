@@ -30,14 +30,14 @@ export const estimateNo = (e: Pick<EstimateRow, 'docNumber' | 'id'>) => e.docNum
 
 const COLUMNS: Column<EstimateRow>[] = [
   { id: 'number', header: 'Estimate', sortable: true, pin: true, className: 'whitespace-nowrap font-semibold', cell: (e) => `#${estimateNo(e)}` },
-  { id: 'customer', header: 'Customer', sortable: true, cell: (e) => e.customerName ?? '—' },
-  { id: 'date', header: 'Date', sortable: true, className: 'whitespace-nowrap', cell: (e) => dayLabel(e.txnDate) },
+  { id: 'customer', header: 'Customer', sortable: true, cell: (e) => e.customerName ?? <span className="text-text-muted">—</span> },
+  { id: 'date', header: 'Date', sortable: true, className: 'whitespace-nowrap text-text-muted', cell: (e) => dayLabel(e.txnDate) },
   { id: 'status', header: 'Status', cell: (e) => <EstimateStatusBadge status={e.status} /> },
-  { id: 'total', header: 'Total', align: 'right', sortable: true, cell: (e) => peso(e.totalAmount) },
+  { id: 'total', header: 'Total', align: 'right', sortable: true, cell: (e) => <span className="font-semibold">{peso(e.totalAmount)}</span> },
   {
     id: 'progress',
     header: 'Paid',
-    className: 'min-w-64',
+    className: 'w-72',
     cell: (e) => <EstimateProgress compact total={e.totalAmount} approved={e.approvedAmount} pending={e.pendingAmount} />,
   },
 ];

@@ -11,7 +11,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Dialog } from '../components/ui/Dialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ErrorState, Skeleton } from '../components/ui/States';
-import { ToneBadge } from '../components/ui/StatusBadge';
+import { Avatar } from '../components/ui/Avatar';
+import { Access } from '../components/team/Access';
 import { useToast } from '../components/ui/Toast';
 import { Input, Select } from '../components/ui/controls';
 import { dateShort } from '../lib/format';
@@ -137,16 +138,8 @@ function AddPersonDialog({ open, onClose, onInvited }: { open: boolean; onClose:
   );
 }
 
-/** Where a person stands: signed up (linked), waiting on an invite, or the invite ran out. */
-function InviteBadge({ member }: { member: TeamMember }) {
-  if (!member.active || member.linked) return null;
-  if (member.invitePending && member.inviteExpiresAt) {
-    return new Date(member.inviteExpiresAt) > new Date()
-      ? <ToneBadge tone="warning">Invite pending · expires {dateShort(member.inviteExpiresAt)}</ToneBadge>
-      : <ToneBadge tone="danger">Invite expired</ToneBadge>;
-  }
-  return <ToneBadge tone="neutral">Not invited yet</ToneBadge>;
-}
+/** Person, role, access, actions: 1fr + 11rem + 17rem + 16rem, 16px gaps. Under 1024px each row stacks instead. */
+const COLS = 'lg:grid lg:grid-cols-[minmax(0,1fr)_11rem_17rem_16rem] lg:items-center lg:gap-4';
 
 /** SuperAdmin: who may sign in, and as what. People join by one-time invite link; there are no passwords. */
 export default function TeamPage() {
@@ -177,11 +170,20 @@ export default function TeamPage() {
     }
   }
 
+  const people = team.data?.filter((m) => m.active);
+  const unlinked = people?.filter((m) => !m.linked).length ?? 0;
+  const summary = people
+    ? `${people.length} ${people.length === 1 ? 'person' : 'people'} can sign in (${ROLES.map((r) => [people.filter((m) => m.role === r.value).length, r.label] as const)
+        .filter(([n]) => n > 0)
+        .map(([n, label]) => `${n} ${label}`)
+        .join(', ')}).${unlinked ? ` ${unlinked} ${unlinked === 1 ? 'has' : 'have'} not linked QuickBooks yet.` : ''}`
+    : 'People who can sign in with QuickBooks, and what each of them can do.';
+
   return (
-    <div className="max-w-3xl">
+    <div>
       <PageHeader
         title="Team"
-        description="People who can sign in with QuickBooks, and what each of them can do."
+        description={summary}
         actions={
           <Button variant="primary" onClick={() => setAdding(true)}>
             <UserPlus aria-hidden className="size-4" /> Add person
@@ -197,51 +199,76 @@ export default function TeamPage() {
       {team.error && <ErrorState message={team.error.message} onRetry={() => team.refetch()} />}
 
       {team.data && (
-        <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface">
-          {team.data.map((m) => {
-            const isMe = m.id === me?.id;
-            return (
-              <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-                <div className="min-w-0 flex-1 basis-56">
-                  <p className="truncate font-semibold">
-                    {m.name} {isMe && <span className="font-normal text-text-muted">(you)</span>}
-                  </p>
-                  <p className="truncate text-small text-text-muted">{m.email}</p>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {!m.active && <ToneBadge tone="danger">Deactivated</ToneBadge>}
-                    <InviteBadge member={m} />
+        <div className="overflow-hidden rounded-card border border-border bg-surface">
+          <div aria-hidden className={`hidden border-b border-border px-4 py-2 text-small font-medium text-text-muted ${COLS}`}>
+            <span>Person</span>
+            <span>Role</span>
+            <span>Access</span>
+            <span />
+          </div>
+          <ul className="divide-y divide-border">
+            {team.data.map((m, i) => {
+              const isMe = m.id === me?.id;
+              return (
+                <li key={m.id} className={`flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 ${COLS}`}>
+                  <div className="flex min-w-0 basis-full items-center gap-3 lg:basis-auto">
+                    <Avatar name={m.name} index={i} />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">
+                        {m.name} {isMe && <span className="font-normal text-text-muted">(you)</span>}
+                      </p>
+                      <p className="truncate text-small text-text-muted">{m.email}</p>
+                    </div>
                   </div>
-                </div>
-                <Select
-                  aria-label={`Role for ${m.name}`}
-                  className="w-auto"
-                  value={m.role}
-                  disabled={isMe || !m.active || update.isPending}
-                  onChange={(e) => {
-                    const role = e.target.value as Role;
-                    void change(m, { role }, `${m.name} is now ${roleLabel(role)}.`);
-                  }}
-                >
-                  {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </Select>
-                {m.active && !isMe && (
-                  <Button size="sm" loading={reinvite.isPending && reinvite.variables === m.id} onClick={() => newInvite(m)} aria-label={`New invite link for ${m.name}`}>
-                    <Link2 aria-hidden className="size-4" /> {m.linked ? 'New invite link' : 'Invite link'}
-                  </Button>
-                )}
-                {m.active ? (
-                  <Button variant="danger" size="sm" disabled={isMe} onClick={() => setDeactivating(m)} aria-label={`Deactivate ${m.name}`}>
-                    Deactivate
-                  </Button>
-                ) : (
-                  <Button size="sm" loading={update.isPending} onClick={() => change(m, { active: true }, `${m.name} can sign in again.`)} aria-label={`Reactivate ${m.name}`}>
-                    Reactivate
-                  </Button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  <Select
+                    aria-label={`Role for ${m.name}`}
+                    className="w-auto lg:order-2 lg:w-full"
+                    value={m.role}
+                    disabled={isMe || !m.active || update.isPending}
+                    onChange={(e) => {
+                      const role = e.target.value as Role;
+                      void change(m, { role }, `${m.name} is now ${roleLabel(role)}.`);
+                    }}
+                  >
+                    {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </Select>
+                  <div className="text-small lg:order-3 lg:text-body">
+                    <Access member={m} />
+                  </div>
+                  <div className="flex gap-2 lg:order-4 lg:justify-end">
+                    {m.active && !isMe && (
+                      <Button size="sm" loading={reinvite.isPending && reinvite.variables === m.id} onClick={() => newInvite(m)} aria-label={`New invite link for ${m.name}`}>
+                        <Link2 aria-hidden className="size-4" /> {m.linked ? 'New invite link' : 'Invite link'}
+                      </Button>
+                    )}
+                    {m.active ? (
+                      <Button size="sm" disabled={isMe} onClick={() => setDeactivating(m)} aria-label={`Deactivate ${m.name}`}>
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button size="sm" loading={update.isPending} onClick={() => change(m, { active: true }, `${m.name} can sign in again.`)} aria-label={`Reactivate ${m.name}`}>
+                        Reactivate
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {people && (
+        <section aria-label="What each role can do" className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-card border border-border bg-border lg:grid-cols-3">
+          {ROLES.map((r) => (
+            <div key={r.value} className="bg-surface p-4">
+              <h2 className="font-semibold">
+                {r.label} <span className="font-normal text-text-muted tabular-nums">{people.filter((m) => m.role === r.value).length}</span>
+              </h2>
+              <p className="mt-1 text-text-muted">{r.hint}</p>
+            </div>
+          ))}
+        </section>
       )}
 
       <AddPersonDialog open={adding} onClose={() => setAdding(false)} onInvited={setInvite} />
