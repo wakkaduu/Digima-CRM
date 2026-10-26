@@ -1,0 +1,1515 @@
+{
+ "url": "http://localhost:5198/dashboard",
+ "at": "2026-10-26T08:50:52.727Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.9,
+    1
+   ],
+   "motion": {
+    "elements": 26,
+    "css": 26,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 1025,
+     "screens": 1.1,
+     "words": 235,
+     "img": 1,
+     "video": 0,
+     "canvas": 0,
+     "svg": 16,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Overview",
+     "words": 1,
+     "chars": 8,
+     "lines": 1,
+     "size": 20,
+     "vw": 1.4,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 81,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Overview",
+     "words": 1,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter Variable"
+    },
+    "headings": [
+     {
+      "text": "₱75,010.00",
+      "words": 1,
+      "chars": 10,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "Inter Variable",
+      "weight": 600,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.12,
+      "top": 198,
+      "tag": "span",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter Variable",
+       "share": 1,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20,
+      30
+     ],
+     "sizeCount": 6,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter Variable",
+      "size": 14,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 6
+     },
+     "measureChars": 37,
+     "max": {
+      "size": 30,
+      "vw": 2.1,
+      "font": "Inter Variable",
+      "text": "₱75,010.00"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0.01,
+     "centerShare": 0.01,
+     "smallText": 0
+    },
+    "eyebrows": [
+     {
+      "text": "Approved, last 14 days",
+      "above": "₱75,010.00",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 169
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f6f7f9",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.2,
+      "l": 0.97
+     },
+     "dark": false,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#52606d",
+       "share": 0.51
+      },
+      {
+       "color": "#1f2933",
+       "share": 0.41
+      },
+      {
+       "color": "#6b4200",
+       "share": 0.03
+      },
+      {
+       "color": "#1d5a2e",
+       "share": 0.03
+      },
+      {
+       "color": "#1f4e79",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#1f4e79"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 3,
+     "inHero": 3,
+     "radius": 6,
+     "height": 36,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Dashboard",
+      "Search customers, estimates, pages Ctrl ",
+      "Manage team"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 17,
+     "hairlineSamples": [
+      "aside.fixed.inset-y-0 232px",
+      "div.sticky.top-0 1208px",
+      "header.flex.min-h-12 371px",
+      "div.flex.min-h-16 371px",
+      "div.flex.min-h-16 371px"
+     ],
+     "outlinedBoxes": 5,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 5,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 513
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "svg",
+      "ratio": 0.12
+     }
+    ],
+    "nav": {
+     "links": 1,
+     "fixed": true,
+     "height": 900,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "inter variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 1025,
+    "margins": {
+     "left": 260,
+     "right": 45
+    },
+    "sections": [
+     {
+      "sel": "div.grid.grid-cols-1",
+      "tag": "div",
+      "top": 148,
+      "height": 348,
+      "words": 68,
+      "media": 1,
+      "middle": 54,
+      "heading": {
+       "text": "₱75,010.00",
+       "size": 30,
+       "tag": "span"
+      },
+      "left": 281,
+      "right": 45,
+      "textLeft": 281,
+      "textRight": 45,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.mt-4.grid",
+      "tag": "div",
+      "top": 631,
+      "height": 371,
+      "words": 76,
+      "media": 0,
+      "middle": 441,
+      "heading": {
+       "text": "Recent decisions",
+       "size": 14,
+       "tag": "h2"
+      },
+      "left": 277,
+      "right": 45,
+      "textLeft": 277,
+      "textRight": 45,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Overview",
+      "size": 20,
+      "top": 81,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 260,
+      "n": 2
+     },
+     {
+      "x": 277,
+      "n": 2
+     },
+     {
+      "x": 1056,
+      "n": 2
+     },
+     {
+      "x": 383,
+      "n": 1
+     },
+     {
+      "x": 398,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 14,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.08,
+    "voidBox": {
+     "x": 540,
+     "y": 600,
+     "w": 360,
+     "h": 300
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": false,
+    "ground": "#f6f7f9",
+    "sidebar": {
+     "w": 232,
+     "tag": "aside",
+     "links": 7,
+     "share": 0.16
+    },
+    "topbar": {
+     "h": 57
+    },
+    "canvas": {
+     "left": 28,
+     "right": 45
+    },
+    "hero": {
+     "text": "Overview",
+     "words": 1,
+     "chars": 8,
+     "lines": 1,
+     "size": 20,
+     "vw": 1.4,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 81,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 1,
+    "layout": {
+     "panels": 6,
+     "firstScreen": 6,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 10,
+     "radii": [
+      [
+       0,
+       5
+      ],
+      [
+       8,
+       5
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 20
+    },
+    "rows": null,
+    "chartHues": 1,
+    "placeholders": [],
+    "type": {
+     "under13": 0.06,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20,
+      30
+     ]
+    },
+    "title": {
+     "text": "Overview",
+     "size": 20,
+     "top": 81
+    },
+    "colourShare": 0.016
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.83,
+    0.92
+   ],
+   "motion": {
+    "elements": 22,
+    "css": 22,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 1915,
+     "screens": 1.9,
+     "words": 221,
+     "img": 1,
+     "video": 0,
+     "canvas": 0,
+     "svg": 17,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Overview",
+     "words": 1,
+     "chars": 8,
+     "lines": 1,
+     "size": 20,
+     "vw": 2.6,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Overview",
+     "words": 1,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter Variable"
+    },
+    "headings": [
+     {
+      "text": "₱75,010.00",
+      "words": 1,
+      "chars": 10,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "Inter Variable",
+      "weight": 600,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.23,
+      "top": 197,
+      "tag": "span",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20,
+      30
+     ],
+     "sizeCount": 6,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter Variable",
+      "size": 14,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 6
+     },
+     "measureChars": 81,
+     "max": {
+      "size": 30,
+      "vw": 3.9,
+      "font": "Inter Variable",
+      "text": "₱75,010.00"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0,
+     "smallText": 0
+    },
+    "eyebrows": [
+     {
+      "text": "Approved, last 14 days",
+      "above": "₱75,010.00",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 168
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f6f7f9",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.2,
+      "l": 0.97
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#ffffff",
+       "top": 494,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#52606d",
+       "share": 0.52
+      },
+      {
+       "color": "#1f2933",
+       "share": 0.41
+      },
+      {
+       "color": "#6b4200",
+       "share": 0.04
+      },
+      {
+       "color": "#1d5a2e",
+       "share": 0.03
+      },
+      {
+       "color": "#8a1c1c",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#1f2933"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 6,
+     "radius": 0,
+     "height": 56,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Manage team",
+      "Home",
+      "Customers",
+      "Estimates",
+      "Team"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 17,
+     "hairlineSamples": [
+      "header.flex.h-14 768px",
+      "header.flex.min-h-12 686px",
+      "div.flex.min-h-16 686px",
+      "div.flex.min-h-16 686px",
+      "div.flex.min-h-16 686px"
+     ],
+     "outlinedBoxes": 5,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 5,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 859
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "svg",
+      "ratio": 0.17
+     }
+    ],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 56,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "inter variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 1915,
+    "margins": {
+     "left": 54,
+     "right": 57
+    },
+    "sections": [
+     {
+      "sel": "div.grid.grid-cols-1",
+      "tag": "div",
+      "top": 147,
+      "height": 695,
+      "words": 68,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "₱75,010.00",
+       "size": 30,
+       "tag": "span"
+      },
+      "left": 57,
+      "right": 57,
+      "textLeft": 57,
+      "textRight": 57,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.mt-4.grid",
+      "tag": "div",
+      "top": 858,
+      "height": 204,
+      "words": 26,
+      "media": 0,
+      "middle": 205,
+      "heading": null,
+      "left": 57,
+      "right": 219,
+      "textLeft": 57,
+      "textRight": 219,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.mt-4.grid",
+      "tag": "div",
+      "top": 1078,
+      "height": 757,
+      "words": 76,
+      "media": 0,
+      "middle": 358,
+      "heading": {
+       "text": "Recent decisions",
+       "size": 14,
+       "tag": "h2"
+      },
+      "left": 57,
+      "right": 57,
+      "textLeft": 57,
+      "textRight": 57,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Overview",
+      "size": 20,
+      "top": 80,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 57,
+      "n": 4
+     },
+     {
+      "x": 40,
+      "n": 2
+     },
+     {
+      "x": 163,
+      "n": 1
+     },
+     {
+      "x": 178,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 14,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": false,
+    "ground": "#f6f7f9",
+    "sidebar": null,
+    "topbar": {
+     "h": 56
+    },
+    "canvas": {
+     "left": 40,
+     "right": 28
+    },
+    "hero": {
+     "text": "Overview",
+     "words": 1,
+     "chars": 8,
+     "lines": 1,
+     "size": 20,
+     "vw": 2.6,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 1,
+    "layout": {
+     "panels": 5,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 9,
+     "radii": [
+      [
+       8,
+       5
+      ],
+      [
+       0,
+       4
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 20
+    },
+    "rows": null,
+    "chartHues": 1,
+    "placeholders": [],
+    "type": {
+     "under13": 0.07,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20,
+      30
+     ]
+    },
+    "title": {
+     "text": "Overview",
+     "size": 20,
+     "top": 80
+    },
+    "colourShare": 0.027
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 3,
+   "filled": [
+    0.76,
+    0.92,
+    0.92
+   ],
+   "motion": {
+    "elements": 11,
+    "css": 11,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 2031,
+     "screens": 2.4,
+     "words": 219,
+     "img": 1,
+     "video": 0,
+     "canvas": 0,
+     "svg": 17,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Overview",
+     "words": 1,
+     "chars": 8,
+     "lines": 1,
+     "size": 20,
+     "vw": 5.1,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Overview",
+     "words": 1,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter Variable"
+    },
+    "headings": [
+     {
+      "text": "₱75,010.00",
+      "words": 1,
+      "chars": 10,
+      "lines": 1,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Inter Variable",
+      "weight": 600,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.44,
+      "top": 274,
+      "tag": "span",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20,
+      30
+     ],
+     "sizeCount": 6,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter Variable",
+      "size": 14,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 6
+     },
+     "measureChars": 34,
+     "max": {
+      "size": 30,
+      "vw": 7.7,
+      "font": "Inter Variable",
+      "text": "₱75,010.00"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0,
+     "smallText": 0
+    },
+    "eyebrows": [
+     {
+      "text": "Approved, last 14 days",
+      "above": "₱75,010.00",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 245
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f6f7f9",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.2,
+      "l": 0.97
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#ffffff",
+       "top": 224,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#52606d",
+       "share": 0.52
+      },
+      {
+       "color": "#1f2933",
+       "share": 0.41
+      },
+      {
+       "color": "#6b4200",
+       "share": 0.04
+      },
+      {
+       "color": "#1d5a2e",
+       "share": 0.03
+      },
+      {
+       "color": "#8a1c1c",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#1f2933"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 6,
+     "radius": 0,
+     "height": 56,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Manage team",
+      "Home",
+      "Customers",
+      "Estimates",
+      "Team"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 17,
+     "hairlineSamples": [
+      "header.flex.h-14 390px",
+      "header.flex.min-h-12 356px",
+      "div.flex.min-h-16 356px",
+      "div.flex.min-h-16 356px",
+      "div.flex.min-h-16 356px"
+     ],
+     "outlinedBoxes": 5,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 5,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 957
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "svg",
+      "ratio": 0.2
+     }
+    ],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 56,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "inter variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 2031,
+    "margins": {
+     "left": 33,
+     "right": 33
+    },
+    "sections": [
+     {
+      "sel": "header.mb-4.flex",
+      "tag": "header",
+      "top": 80,
+      "height": 128,
+      "words": 16,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Overview",
+       "size": 20,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 29,
+      "textLeft": 16,
+      "textRight": 29,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.grid.grid-cols-1",
+      "tag": "div",
+      "top": 224,
+      "height": 716,
+      "words": 68,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "₱75,010.00",
+       "size": 30,
+       "tag": "span"
+      },
+      "left": 33,
+      "right": 33,
+      "textLeft": 33,
+      "textRight": 33,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.mt-4.grid",
+      "tag": "div",
+      "top": 956,
+      "height": 222,
+      "words": 26,
+      "media": 0,
+      "middle": 40,
+      "heading": null,
+      "left": 33,
+      "right": 51,
+      "textLeft": 33,
+      "textRight": 51,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.mt-4.grid",
+      "tag": "div",
+      "top": 1194,
+      "height": 757,
+      "words": 76,
+      "media": 0,
+      "middle": 29,
+      "heading": {
+       "text": "Recent decisions",
+       "size": 14,
+       "tag": "h2"
+      },
+      "left": 33,
+      "right": 33,
+      "textLeft": 33,
+      "textRight": 33,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Overview",
+      "size": 20,
+      "top": 80,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 33,
+      "n": 4
+     },
+     {
+      "x": 16,
+      "n": 2
+     },
+     {
+      "x": 139,
+      "n": 1
+     },
+     {
+      "x": 154,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 14,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": false,
+    "ground": "#f6f7f9",
+    "sidebar": null,
+    "topbar": {
+     "h": 56
+    },
+    "canvas": {
+     "left": 16,
+     "right": 16
+    },
+    "hero": {
+     "text": "Overview",
+     "words": 1,
+     "chars": 8,
+     "lines": 1,
+     "size": 20,
+     "vw": 5.1,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 1,
+    "layout": {
+     "panels": 5,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 9,
+     "radii": [
+      [
+       8,
+       5
+      ],
+      [
+       0,
+       4
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 20
+    },
+    "rows": null,
+    "chartHues": 1,
+    "placeholders": [],
+    "type": {
+     "under13": 0.06,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20,
+      30
+     ]
+    },
+    "title": {
+     "text": "Overview",
+     "size": 20,
+     "top": 80
+    },
+    "colourShare": 0.028
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "D:\\DigimaCRM\\.taste-skill\\final\\desktop-fold.jpg",
+   "pages": [
+    "D:\\DigimaCRM\\.taste-skill\\final\\desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "D:\\DigimaCRM\\.taste-skill\\final\\tablet-fold.jpg",
+   "pages": [
+    "D:\\DigimaCRM\\.taste-skill\\final\\tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "D:\\DigimaCRM\\.taste-skill\\final\\mobile-fold.jpg",
+   "pages": [
+    "D:\\DigimaCRM\\.taste-skill\\final\\mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

@@ -1,0 +1,1275 @@
+{
+ "url": "http://localhost:5199/settings/team",
+ "at": "2026-10-26T08:54:05.037Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.63
+   ],
+   "motion": {
+    "elements": 25,
+    "css": 25,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 900,
+     "screens": 1,
+     "words": 84,
+     "img": 1,
+     "video": 0,
+     "canvas": 0,
+     "svg": 16,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Team",
+     "words": 1,
+     "chars": 4,
+     "lines": 1,
+     "size": 20,
+     "vw": 1.4,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 81,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Team",
+     "words": 1,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter Variable"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter Variable",
+       "share": 0.99,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.01,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20
+     ],
+     "sizeCount": 5,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter Variable",
+      "size": 14,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 6
+     },
+     "measureChars": 69,
+     "max": {
+      "size": 20,
+      "vw": 1.4,
+      "font": "Inter Variable",
+      "text": "Team"
+     },
+     "monoShare": 0.01,
+     "monoProseShare": 0,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0.03,
+     "centerShare": 0.24,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f6f7f9",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.2,
+      "l": 0.97
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#ffffff",
+       "top": 148,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#52606d",
+       "share": 0.44
+      },
+      {
+       "color": "#1f2933",
+       "share": 0.33
+      },
+      {
+       "color": "#8a1c1c",
+       "share": 0.1
+      },
+      {
+       "color": "#6b4200",
+       "share": 0.09
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.02
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#8a1c1c"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 10,
+     "inHero": 10,
+     "radius": 6,
+     "height": 32,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Team",
+      "Search customers, estimates, pages Ctrl ",
+      "Add person",
+      "Deactivate",
+      "New invite link"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "aside.fixed.inset-y-0 232px",
+      "div.sticky.top-0 1208px",
+      "li.flex.flex-wrap 766px",
+      "li.flex.flex-wrap 766px",
+      "li.flex.flex-wrap 766px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 1,
+     "fixed": true,
+     "height": 900,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "inter variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 900,
+    "margins": {
+     "left": 260,
+     "right": 429
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Team",
+      "size": 20,
+      "top": 81,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 260,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 14,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.25,
+    "voidBox": {
+     "x": 1020,
+     "y": 120,
+     "w": 420,
+     "h": 780
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": false,
+    "ground": "#f6f7f9",
+    "sidebar": {
+     "w": 232,
+     "tag": "aside",
+     "links": 7,
+     "share": 0.16
+    },
+    "topbar": {
+     "h": 57
+    },
+    "canvas": {
+     "left": -1,
+     "right": 412
+    },
+    "hero": {
+     "text": "Team",
+     "words": 1,
+     "chars": 4,
+     "lines": 1,
+     "size": 20,
+     "vw": 1.4,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 81,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 2,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 2,
+     "radii": [
+      [
+       0,
+       1
+      ],
+      [
+       8,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 0,
+     "tabularShare": null,
+     "kpiMax": null
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.03,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      17,
+      20
+     ]
+    },
+    "title": {
+     "text": "Team",
+     "size": 20,
+     "top": 81
+    },
+    "colourShare": 0.003
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.83
+   ],
+   "motion": {
+    "elements": 22,
+    "css": 22,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 1024,
+     "screens": 1,
+     "words": 70,
+     "img": 1,
+     "video": 0,
+     "canvas": 0,
+     "svg": 17,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Team",
+     "words": 1,
+     "chars": 4,
+     "lines": 1,
+     "size": 20,
+     "vw": 2.6,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Team",
+     "words": 1,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter Variable"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20
+     ],
+     "sizeCount": 5,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter Variable",
+      "size": 14,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 6
+     },
+     "measureChars": 69,
+     "max": {
+      "size": 20,
+      "vw": 2.6,
+      "font": "Inter Variable",
+      "text": "Team"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.3,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f6f7f9",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.2,
+      "l": 0.97
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#ffffff",
+       "top": 147,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#52606d",
+       "share": 0.43
+      },
+      {
+       "color": "#1f2933",
+       "share": 0.28
+      },
+      {
+       "color": "#8a1c1c",
+       "share": 0.13
+      },
+      {
+       "color": "#6b4200",
+       "share": 0.12
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#8a1c1c"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 13,
+     "inHero": 13,
+     "radius": 6,
+     "height": 44,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Add person",
+      "Deactivate",
+      "New invite link",
+      "Deactivate",
+      "New invite link"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "header.flex.h-14 768px",
+      "li.flex.flex-wrap 686px",
+      "li.flex.flex-wrap 686px",
+      "li.flex.flex-wrap 686px",
+      "nav.fixed.inset-x-0 768px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 56,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "inter variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 1024,
+    "margins": {
+     "left": 40,
+     "right": 40
+    },
+    "sections": [
+     {
+      "sel": "li.flex.flex-wrap",
+      "tag": "li",
+      "top": 148,
+      "height": 172,
+      "words": 5,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 57,
+      "right": 57,
+      "textLeft": 57,
+      "textRight": 590,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "li.flex.flex-wrap",
+      "tag": "li",
+      "top": 320,
+      "height": 172,
+      "words": 7,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 57,
+      "right": 57,
+      "textLeft": 57,
+      "textRight": 473,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "li.flex.flex-wrap",
+      "tag": "li",
+      "top": 492,
+      "height": 172,
+      "words": 7,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 57,
+      "right": 57,
+      "textLeft": 57,
+      "textRight": 473,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "li.flex.flex-wrap",
+      "tag": "li",
+      "top": 665,
+      "height": 191,
+      "words": 13,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 57,
+      "right": 57,
+      "textLeft": 57,
+      "textRight": 460,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Team",
+      "size": 20,
+      "top": 80,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 40,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 14,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": false,
+    "ground": "#f6f7f9",
+    "sidebar": null,
+    "topbar": {
+     "h": 56
+    },
+    "canvas": {
+     "left": 16,
+     "right": 16
+    },
+    "hero": {
+     "text": "Team",
+     "words": 1,
+     "chars": 4,
+     "lines": 1,
+     "size": 20,
+     "vw": 2.6,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 1,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 1,
+     "radii": [
+      [
+       8,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 0,
+     "tabularShare": null,
+     "kpiMax": null
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.05,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      17,
+      20
+     ]
+    },
+    "title": {
+     "text": "Team",
+     "size": 20,
+     "top": 80
+    },
+    "colourShare": 0.009
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.8,
+    0.88
+   ],
+   "motion": {
+    "elements": 22,
+    "css": 22,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 1014,
+     "screens": 1.2,
+     "words": 70,
+     "img": 1,
+     "video": 0,
+     "canvas": 0,
+     "svg": 17,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Team",
+     "words": 1,
+     "chars": 4,
+     "lines": 1,
+     "size": 20,
+     "vw": 5.1,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Team",
+     "words": 1,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter Variable"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      12,
+      13,
+      14,
+      17,
+      20
+     ],
+     "sizeCount": 5,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter Variable",
+      "size": 14,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 6
+     },
+     "measureChars": 51,
+     "max": {
+      "size": 20,
+      "vw": 5.1,
+      "font": "Inter Variable",
+      "text": "Team"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.3,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f6f7f9",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.2,
+      "l": 0.97
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#ffffff",
+       "top": 224,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#52606d",
+       "share": 0.43
+      },
+      {
+       "color": "#1f2933",
+       "share": 0.28
+      },
+      {
+       "color": "#8a1c1c",
+       "share": 0.13
+      },
+      {
+       "color": "#6b4200",
+       "share": 0.12
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#8a1c1c"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 13,
+     "inHero": 11,
+     "radius": 6,
+     "height": 44,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Add person",
+      "Deactivate",
+      "New invite link",
+      "Deactivate",
+      "New invite link"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "header.flex.h-14 390px",
+      "li.flex.flex-wrap 356px",
+      "li.flex.flex-wrap 356px",
+      "li.flex.flex-wrap 356px",
+      "nav.fixed.inset-x-0 390px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 8,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": false,
+     "height": 56,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "inter variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 1014,
+    "margins": {
+     "left": 16,
+     "right": 33
+    },
+    "sections": [
+     {
+      "sel": "header.mb-4.flex",
+      "tag": "header",
+      "top": 80,
+      "height": 128,
+      "words": 16,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Team",
+       "size": 20,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 38,
+      "textLeft": 16,
+      "textRight": 38,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "ul.divide-y.divide-border",
+      "tag": "ul",
+      "top": 224,
+      "height": 710,
+      "words": 32,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 33,
+      "right": 33,
+      "textLeft": 33,
+      "textRight": 106,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Team",
+      "size": 20,
+      "top": 80,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 14,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": false,
+    "ground": "#f6f7f9",
+    "sidebar": null,
+    "topbar": {
+     "h": 56
+    },
+    "canvas": {
+     "left": 16,
+     "right": 16
+    },
+    "hero": {
+     "text": "Team",
+     "words": 1,
+     "chars": 4,
+     "lines": 1,
+     "size": 20,
+     "vw": 5.1,
+     "font": "Inter Variable",
+     "weight": 600,
+     "tracking": 0,
+     "leading": 1.3,
+     "top": 80,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 1,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 1,
+     "radii": [
+      [
+       8,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 0,
+     "tabularShare": null,
+     "kpiMax": null
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.05,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      17,
+      20
+     ]
+    },
+    "title": {
+     "text": "Team",
+     "size": 20,
+     "top": 80
+    },
+    "colourShare": 0.018
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "dev-server",
+   "width": 1440,
+   "message": "This page is served by a development server (Vite, webpack or Next in dev mode).",
+   "fix": "Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "unused-canvas",
+   "width": 1440,
+   "message": "The content stops 412px short of the right edge while it starts -1px from the sidebar.",
+   "fix": "Let the grid fill the canvas (columns in fr units), or centre a capped canvas with equal margins. A dead strip on one side reads as unfinished."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "D:\\DigimaCRM\\.taste-skill\\before-settings-team\\desktop-fold.jpg",
+   "pages": [
+    "D:\\DigimaCRM\\.taste-skill\\before-settings-team\\desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "D:\\DigimaCRM\\.taste-skill\\before-settings-team\\tablet-fold.jpg",
+   "pages": [
+    "D:\\DigimaCRM\\.taste-skill\\before-settings-team\\tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "D:\\DigimaCRM\\.taste-skill\\before-settings-team\\mobile-fold.jpg",
+   "pages": [
+    "D:\\DigimaCRM\\.taste-skill\\before-settings-team\\mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}
