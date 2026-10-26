@@ -71,15 +71,17 @@ JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP 
 
 ## 2. Authentication & sessions
 
-- **Sign in with QuickBooks** (Intuit OpenID Connect) is the only way in; there are no passwords. A successful sign-in creates a signed **cookie session** `pp_session` (`httpOnly`, `sameSite=lax`, `secure` in production, **8 h** lifetime).
+- **Two ways in:** email and password (`POST /api/auth/login`), or **Sign in with QuickBooks** (Intuit OpenID Connect). Either creates a signed **cookie session** `pp_session` (`httpOnly`, `sameSite=lax`, `secure` in production, **8 h** lifetime).
 - Browser clients must send credentials (`fetch(..., { credentials: 'include' })`) or use the Vite proxy so the cookie is same-origin. No CORS middleware is installed.
 - There is **no CSRF token**; protection relies on `sameSite=lax` and JSON/multipart bodies. Keep that in mind if cross-site embedding is ever introduced.
 - On every protected request the user is **re-read from the database**, so deactivation and role changes take effect immediately (a deactivated user's session is cleared).
 - Roles: `sales`, `admin`, `superadmin`. Roles are **strict, not hierarchical** — each route lists who may call it. SuperAdmin manages accounts, sees reports and can read everything admins can read (all payments, receipts, customers, estimates), but does not submit or approve payments.
-- **People join by invite link, not by email.** The production Intuit app only returns the verified Intuit id (`sub`), so accounts are linked to that id. A SuperAdmin adds `{name, email, role}` (`POST /api/users`; the email is only a label) and gets a one-time link `{FRONTEND_URL}/invite#<token>` (valid 7 days; the token is in the URL fragment so it never reaches server logs, and only its SHA-256 is stored). The person opens it (`POST /api/auth/invite`), signs in with QuickBooks, and their Intuit id is linked to the account. After that a plain sign-in works. An Intuit id nobody invited is refused. `POST /api/users/:id/invite` issues a replacement link (lost/expired, or a different Intuit login).
+- **People join by invite link.** The production Intuit app only returns the verified Intuit id (`sub`), so QuickBooks accounts are linked to that id, never matched by email. A SuperAdmin adds `{name, email, role}` (`POST /api/users`; the email is only a label) and gets a one-time link `{FRONTEND_URL}/invite#<token>` (valid 7 days; the token is in the URL fragment so it never reaches server logs, and only its SHA-256 is stored). The person opens it and uses it one of two ways: **sign in with QuickBooks** (`POST /api/auth/invite` remembers the link for this browser, then their Intuit id is linked to the account), or **set a password** (`POST /api/auth/invite/password {token, password}`, then they log in with the account's email and that password; also how a forgotten password is reset, and how a SuperAdmin sets their own first password). After that a plain sign-in works. An Intuit id nobody invited is refused. `POST /api/users/:id/invite` issues a replacement link (lost/expired, or a different Intuit login).
 - **One company.** Only sign-ins from the QuickBooks company `QBO_REALM_ID` are accepted.
 - **First SuperAdmin.** Leave `SUPERADMIN_QBO_SUB` empty, attempt one sign-in (it is refused and the log prints `unknown Intuit id <sub>`), put that value in `SUPERADMIN_QBO_SUB` and restart. That Intuit login always signs in as SuperAdmin (creating or repairing the account labelled `SUPERADMIN_EMAIL`), which also recovers a lockout.
-- **Per-user QuickBooks tokens.** Every user's own QuickBooks tokens are stored (`qbo_tokens`, keyed by user) and every QuickBooks call runs as the signed-in user, so QuickBooks' own permissions and audit trail apply. Estimate and customer caches are per user. Tokens are deleted on logout and on deactivation.
+- **Email logins connect QuickBooks themselves.** Someone who signs in by email has no QuickBooks connection until they click **Connect QuickBooks** (`GET /api/auth/qbo/login?mode=connect`, signed in only): the same Intuit sign-in, but the result is attached to the signed-in account (and its Intuit login is linked the first time). Until then QuickBooks routes return `409 QBO_NOT_CONNECTED`. An Intuit login that belongs to another account, or a different login than the one already linked, is refused (`already_linked` / `login_mismatch`; the browser returns to `/settings/integrations?error=<code>`).
+- Email login: `POST /api/auth/login` (20 per 15 min per IP). Passwords are 10-200 characters, hashed with scrypt. Accounts with an old temporary password (`must_change_password`) are refused with `PASSWORD_RESET_REQUIRED` until a SuperAdmin sends an invite link. `POST /api/auth/change-password` (signed in) changes your own.
+- **Per-user QuickBooks tokens.** Every user's own QuickBooks tokens are stored (`qbo_tokens`, keyed by user) and every QuickBooks call runs as the signed-in user, so QuickBooks' own permissions and audit trail apply. Estimate and customer caches are per user. Tokens are kept across logout (an email login does not go through Intuit again) and deleted on deactivation.
 - When a user's QuickBooks connection can no longer be renewed, QuickBooks routes return `401` with `details.code = "QBO_REAUTH_REQUIRED"`; the client must send the user through sign-in again.
 - Rate limit: `/api/auth/qbo/login` — **30 requests / 15 min** per IP (`429` afterwards).
 
@@ -92,9 +94,12 @@ Guards used below: **Public** (no auth), **Auth** (any signed-in user), **Sales*
 | Method | Path | Guard | Purpose |
 |---|---|---|---|
 | GET | `/api/health` | Public | Liveness check |
-| GET | `/api/auth/qbo/login` | Public | Start "Sign in with QuickBooks" (redirect) |
+| POST | `/api/auth/login` | Public | Log in with email and password |
+| POST | `/api/auth/change-password` | Auth | Change your own password |
+| POST | `/api/auth/invite/password` | Public | Use an invite link to set a password and sign in |
+| GET | `/api/auth/qbo/login` | Public | Start "Sign in with QuickBooks"; `?mode=connect` (signed in) connects your own QuickBooks (redirect) |
 | GET | `/api/auth/qbo/callback` | Public | Intuit redirects here; creates the session (redirect) |
-| POST | `/api/auth/logout` | Public | Sign out (also deletes the user's QuickBooks tokens) |
+| POST | `/api/auth/logout` | Public | Sign out |
 | GET | `/api/auth/me` | Public | Current user or `null` |
 | GET | `/api/auth/qbo/status` | Auth | The signed-in user's own QuickBooks connection |
 | GET | `/api/users` | SuperAdmin | List accounts |
@@ -162,7 +167,8 @@ Intuit redirects here (must match `QBO_REDIRECT_URI`). Validates `state` (consta
 | `access_denied` | The person cancelled at Intuit |
 | `not_authorized` | This Intuit login was never invited (the log prints its id) |
 | `invite_invalid` | The invite link is unknown, expired or already used |
-| `already_linked` | The invite was opened with an Intuit login that already belongs to another account |
+| `already_linked` | The Intuit login already belongs to another account |
+| `login_mismatch` | (connect) Not the Intuit login already linked to this account |
 | `deactivated` | The account was deactivated |
 | `wrong_company` | Signed in from a different QuickBooks company |
 | `sign_in_failed` | Anything else (bad state, Intuit error) |
@@ -512,6 +518,8 @@ Machine-readable values in `error.details.code`:
 | `INVALID_RECEIVER` | 422 | Chosen receiver not an active sales user | Refresh receivers list |
 | `DUPLICATE_REFERENCE` | 409 | Bank reference already used | Block; tell user |
 | `DUPLICATE_PENDING` | 409 | Similar pending payment in last 24 h | Confirm, then resubmit with `force=true` |
+| `PASSWORD_RESET_REQUIRED` | 403 | Old temporary password | Ask a SuperAdmin for an invite link |
+| `QBO_NOT_CONNECTED` | 409 | This user never connected QuickBooks | Show Connect QuickBooks |
 | `QBO_REAUTH_REQUIRED` | 401 | No QuickBooks connection for this user, or its refresh token expired/revoked | Send the user to `/api/auth/qbo/login` |
 | `INVITE_INVALID` | 404 | Invite link unknown, expired, used, or for a deactivated account | Ask the SuperAdmin for a new link |
 | `SELF_LOCKOUT` | 409 | A SuperAdmin tried to demote/deactivate themselves | Tell the user |

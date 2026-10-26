@@ -8,8 +8,8 @@ import DashboardPage, { greeting } from './DashboardPage';
 
 afterEach(() => vi.unstubAllGlobals());
 
-const sales = { id: 's1', name: 'Sam Reyes', email: 's@x.test', role: 'sales' as const, mustChangePassword: false };
-const admin = { id: 'a1', name: 'Ana Admin', email: 'a@x.test', role: 'admin' as const, mustChangePassword: false };
+const sales = { id: 's1', name: 'Sam Reyes', email: 's@x.test', role: 'sales' as const, hasPassword: true };
+const admin = { id: 'a1', name: 'Ana Admin', email: 'a@x.test', role: 'admin' as const, hasPassword: true };
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 const counts = { all: 10, Pending: 3, Accepted: 4, Closed: 2, Rejected: 1 };
 

@@ -49,6 +49,8 @@ app.use(
 );
 
 // Each sign-in attempt costs an Intuit round trip; cap them per client
+// Brute-force protection for the email login
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 }));
 app.use('/api/auth/invite', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 })); // invite tokens are unguessable; this just stops hammering
 app.use('/api/auth/qbo/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }));
 

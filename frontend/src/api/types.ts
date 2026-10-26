@@ -8,6 +8,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  /** Can sign in with email and password (and so change it). */
+  hasPassword: boolean;
 }
 
 /** A row from GET /api/users (SuperAdmin account management). */

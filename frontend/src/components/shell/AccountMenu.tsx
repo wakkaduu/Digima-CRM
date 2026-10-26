@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { ChevronUp, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { ChevronUp, KeyRound, LogOut } from 'lucide-react';
 import { useLogout } from '../../api/auth';
 import type { User } from '../../api/types';
 import { cn } from '../../lib/cn';
@@ -27,12 +27,17 @@ export function Avatar({ name }: { name: string }) {
 const itemClass =
   'flex w-full min-h-(--control-h) items-center gap-2 rounded-control px-3 text-left text-text no-underline hover:bg-surface-sunk';
 
-/** Sign out. Shared by the sidebar menu and the mobile "More" sheet. */
-export function AccountActions({ onDone }: { user: User; onDone?: () => void }) {
+/** Change password (for accounts that have one) and sign out. Shared by the sidebar menu and the mobile "More" sheet. */
+export function AccountActions({ user, onDone }: { user: User; onDone?: () => void }) {
   const logout = useLogout();
   const navigate = useNavigate();
   return (
     <>
+      {user.hasPassword && (
+        <Link to="/password" className={itemClass} onClick={onDone}>
+          <KeyRound aria-hidden className="size-4" /> Change password
+        </Link>
+      )}
       <button
         type="button"
         className={itemClass}

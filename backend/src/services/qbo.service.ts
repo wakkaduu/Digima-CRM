@@ -40,6 +40,8 @@ const ESTIMATE_CACHE_TTL_MS = 60 * 1000;
 
 const REAUTH_MESSAGE = 'Your QuickBooks connection has expired. Please sign in with QuickBooks again.';
 const reauthRequired = () => new HttpError(401, REAUTH_MESSAGE, { code: 'QBO_REAUTH_REQUIRED' });
+// 409, not 401: a 401 would be read as "your web session ended". Nothing to renew yet; the user has to connect once.
+const notConnected = () => new HttpError(409, 'QuickBooks is not connected to your account yet. Connect it to continue.', { code: 'QBO_NOT_CONNECTED' });
 
 export async function saveTokens(userId: string, tokenJson: QboJson, realmId: string) {
     const now = Date.now();
@@ -74,7 +76,8 @@ async function refreshTokens(row: QboToken) {
 
 async function getTokenRow(userId: string, { force = false }: { force?: boolean } = {}): Promise<QboToken> {
     const row = await qboTokenModel.get(userId);
-    if (!row || row.refreshTokenExpiresAt <= new Date()) throw reauthRequired();
+    if (!row) throw notConnected();
+    if (row.refreshTokenExpiresAt <= new Date()) throw reauthRequired();
 
     const stillValid = row.accessTokenExpiresAt.getTime() - Date.now() > REFRESH_BUFFER_MS;
     if (stillValid && !force) return row;
@@ -169,7 +172,7 @@ export async function getConnectionStatus(userId: string): Promise<{
     verifyError?: string;
 }> {
     const row = await qboTokenModel.get(userId);
-    if (!row) return { connected: false, needsReauth: true };
+    if (!row) return { connected: false, needsReauth: false };
     const connected = row.refreshTokenExpiresAt > new Date();
     return {
         connected,

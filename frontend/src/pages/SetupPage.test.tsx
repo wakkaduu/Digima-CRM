@@ -16,7 +16,7 @@ describe('SetupPage', () => {
     expect(screen.getByText('Connected')).toBeInTheDocument();
     expect(screen.getByText(/Oct 16, 2026.*10:00/)).toBeInTheDocument(); // last verified, in Manila time
     expect(screen.getByText('Jan 24, 2027 (in 98 days)')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Reconnect to QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login?next=%2Fsettings%2Fintegrations');
+    expect(screen.getByRole('link', { name: /Reconnect to QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login?mode=connect&next=%2Fsettings%2Fintegrations');
 
     await userEvent.click(screen.getByRole('button', { name: /Run test/ }));
     expect(await screen.findByText(/Loaded 2 open estimates/)).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe('SetupPage', () => {
   it('cannot run the test while disconnected', async () => {
     mockApi({ 'GET /api/auth/qbo/status?verify=true': [200, { connected: false }] });
     renderWithProviders(<SetupPage />);
-    expect(await screen.findByRole('link', { name: /Sign in with QuickBooks/ })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Connect QuickBooks/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Run test/ })).toBeDisabled();
   });
 });

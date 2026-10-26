@@ -7,6 +7,7 @@ export type SignInFailure =
     | 'deactivated'
     | 'invite_invalid'
     | 'already_linked'
+    | 'login_mismatch'
     | 'sign_in_failed';
 
 interface Account {
@@ -56,4 +57,24 @@ export function decideSignIn(input: {
     }
 
     return { action: 'refuse', reason: 'not_authorized' };
+}
+
+/**
+ * Someone already signed in (by email or QuickBooks) connects their own QuickBooks. The Intuit login must not belong to
+ * another account, and must be the same login if this account has already been linked to one.
+ */
+export function decideConnect(input: {
+    sub: string;
+    user: Account & { qboSub: string | null };
+    /** The account this Intuit id is already linked to, if any. */
+    owner: { id: string } | null;
+    bootstrapSub?: string;
+}): { action: 'connect' } | { action: 'refuse'; reason: SignInFailure } {
+    const { sub, user, owner, bootstrapSub } = input;
+    if (!user.active) return { action: 'refuse', reason: 'deactivated' };
+    if (owner && owner.id !== user.id) return { action: 'refuse', reason: 'already_linked' };
+    if (user.qboSub && user.qboSub !== sub) return { action: 'refuse', reason: 'login_mismatch' };
+    // The operator's Intuit id belongs to the SuperAdmin account (SUPERADMIN_QBO_SUB), whoever asks first.
+    if (bootstrapSub && sub === bootstrapSub && user.qboSub !== sub) return { action: 'refuse', reason: 'already_linked' };
+    return { action: 'connect' };
 }

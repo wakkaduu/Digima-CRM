@@ -10,7 +10,7 @@ export interface NavItem {
   short: string;
   icon: LucideIcon;
   roles: Role[];
-  group: 'Work' | 'Sales' | 'Finance' | 'Admin';
+  group: 'Work' | 'Sales' | 'Finance' | 'Admin' | 'Account';
   /** Which live count to show on the item. */
   badge?: 'pending' | 'unseen';
   /** Rendered as the raised centre action in the tab bar. */
@@ -19,7 +19,7 @@ export interface NavItem {
   matchChildren?: boolean;
 }
 
-export const GROUP_ORDER: NavItem['group'][] = ['Work', 'Sales', 'Finance', 'Admin'];
+export const GROUP_ORDER: NavItem['group'][] = ['Work', 'Sales', 'Finance', 'Admin', 'Account'];
 
 // Only screens that exist are listed (D10): modules appear here the day they ship.
 // The array order is the tab-bar order on phones; the sidebar regroups by GROUP_ORDER.
@@ -31,7 +31,7 @@ export const NAV: NavItem[] = [
   { to: '/payments', label: 'My payments', short: 'Payments', icon: ReceiptText, roles: ['sales'], group: 'Finance', badge: 'unseen' },
   { to: '/estimates', label: 'Estimates', short: 'Estimates', icon: FileText, roles: ['sales', 'admin', 'superadmin'], group: 'Sales', matchChildren: true },
   { to: '/settings/team', label: 'Team', short: 'Team', icon: UserCog, roles: ['superadmin'], group: 'Admin' },
-  { to: '/settings/integrations', label: 'QuickBooks', short: 'QuickBooks', icon: Plug, roles: ['admin', 'superadmin'], group: 'Admin' },
+  { to: '/settings/integrations', label: 'QuickBooks', short: 'QuickBooks', icon: Plug, roles: ['sales', 'admin', 'superadmin'], group: 'Account' },
 ];
 
 export const navFor = (user: User) => NAV.filter((n) => n.roles.includes(user.role));

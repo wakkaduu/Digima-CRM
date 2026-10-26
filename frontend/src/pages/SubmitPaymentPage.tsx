@@ -94,7 +94,7 @@ export function SubmitPaymentPage() {
   const receiverName = receivers.find((r) => r.id === receivedById)?.name;
   const qboDown =
     estimatesQuery.error instanceof ApiError &&
-    estimatesQuery.error.code === 'QBO_REAUTH_REQUIRED';
+    (estimatesQuery.error.code === 'QBO_NOT_CONNECTED' || estimatesQuery.error.code === 'QBO_REAUTH_REQUIRED');
   const loadError = estimatesQuery.error && !qboDown ? estimatesQuery.error.message : null;
 
   const savedBank = () => {
