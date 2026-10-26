@@ -70,7 +70,7 @@ const focusInfo = (page) => page.evaluate(() => {
 async function fill(page) {
   await page.getByRole('button', { name: 'Customer or estimate' }).click();
   const sheet = page.getByRole('dialog', { name: 'Choose an estimate' });
-  await sheet.getByRole('button', { name: /Acme Corp/ }).first().click();
+  await sheet.getByRole('button', { name: /Marikina Steel/ }).first().click();
   await page.getByLabel(/Amount received/).fill('2500');
   await page.getByRole('radio', { name: 'BDO' }).check({ force: true });
   await page.locator('input[type=file]').nth(1).setInputFiles({ name: 'receipt.png', mimeType: 'image/png', buffer: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), randomBytes(700 * 1024)]) });

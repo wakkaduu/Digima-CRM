@@ -87,14 +87,27 @@ export function ToneBadge({ tone, children }: { tone: Tone; children: React.Reac
   );
 }
 
-const ESTIMATE_TONE: Record<string, Tone> = { Pending: 'warning', Accepted: 'success', Closed: 'danger', Rejected: 'danger' };
+const DOT: Record<Tone, string> = { neutral: 'bg-border-strong', info: 'bg-info', success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' };
+
+/** A state in table rows: a small dot in the state's colour and the name in ink. Quieter than a filled tag when most rows carry one. */
+export function StatusDot({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span aria-hidden className={cn('size-2 shrink-0 rounded-full', DOT[tone])} />
+      {children}
+    </span>
+  );
+}
+
+// "Closed" is a finished estimate, not a failure: only a rejection is red.
+const ESTIMATE_TONE: Record<string, Tone> = { Pending: 'warning', Accepted: 'success', Closed: 'neutral', Rejected: 'danger' };
 
 /** A QuickBooks estimate's state. Unknown states fall back to neutral. */
 export function EstimateStatusBadge({ status, label }: { status?: string; label?: string }) {
-  return <ToneBadge tone={ESTIMATE_TONE[status ?? ''] ?? 'neutral'}>{label ?? status ?? 'Unknown'}</ToneBadge>;
+  return <StatusDot tone={ESTIMATE_TONE[status ?? ''] ?? 'neutral'}>{label ?? status ?? 'Unknown'}</StatusDot>;
 }
 
 /** A customer's active / inactive state. */
 export function ActiveBadge({ active }: { active: boolean }) {
-  return <ToneBadge tone={active ? 'success' : 'danger'}>{active ? 'Active' : 'Inactive'}</ToneBadge>;
+  return <StatusDot tone={active ? 'success' : 'neutral'}>{active ? 'Active' : 'Inactive'}</StatusDot>;
 }

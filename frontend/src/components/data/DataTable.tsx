@@ -35,7 +35,7 @@ interface Props<T> {
   selectedId?: string;
 }
 
-const cell = 'px-3 py-2 align-top';
+const cell = 'px-3 py-3 align-middle';
 
 /**
  * Desktop data grid: sticky header, sortable columns (aria-sort), 40px rows, tabular right-aligned money,
@@ -77,7 +77,7 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSortCha
 
   return (
     <div className="max-h-[70dvh] overflow-auto rounded-card border border-border bg-surface">
-      <table className="w-full border-collapse text-body">
+      <table className="w-full border-collapse text-body tabular-nums">
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr>
@@ -89,7 +89,7 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSortCha
                   scope="col"
                   aria-sort={c.sortValue || c.sortable ? (sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none') : undefined}
                   className={cn(
-                    'sticky top-0 border-b border-border bg-surface-sunk p-0 text-left font-semibold whitespace-nowrap',
+                    'group/th sticky top-0 border-b border-border bg-surface p-0 text-left text-small font-medium text-text-muted whitespace-nowrap',
                     c.align === 'right' && 'text-right',
                     c.pin ? 'left-0 z-[3]' : 'z-[2]',
                   )}
@@ -98,7 +98,7 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSortCha
                     <button
                       type="button"
                       onClick={() => toggle(c)}
-                      className={cn('flex min-h-10 w-full items-center gap-1 px-3 font-semibold', c.align === 'right' && 'justify-end')}
+                      className={cn('flex min-h-10 w-full items-center gap-1 px-3 font-medium hover:text-text', c.align === 'right' && 'justify-end', sorted && 'text-text')}
                     >
                       {c.header}
                       {sorted === 'asc' ? (
@@ -106,7 +106,7 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSortCha
                       ) : sorted === 'desc' ? (
                         <ArrowDown aria-hidden className="size-3.5" />
                       ) : (
-                        <ChevronsUpDown aria-hidden className="size-3.5 text-text-muted" />
+                        <ChevronsUpDown aria-hidden className="size-3.5 opacity-0 group-hover/th:opacity-100 group-focus-within/th:opacity-100" />
                       )}
                     </button>
                   ) : (
@@ -135,7 +135,7 @@ export function DataTable<T>({ columns, rows, getRowId, caption, sort, onSortCha
                     : undefined
                 }
                 className={cn(
-                  'group h-10 border-t border-border first:border-t-0',
+                  'group h-12 border-t border-border first:border-t-0',
                   onRowClick && 'cursor-pointer',
                   id === selectedId ? 'bg-accent-subtle' : 'hover:bg-surface-sunk',
                 )}

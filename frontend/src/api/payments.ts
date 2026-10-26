@@ -48,6 +48,9 @@ export interface HistoryParams {
   q?: string;
   rep?: string;
   bank?: string;
+  /** Submitted on or after / on or before this day (YYYY-MM-DD, Manila). */
+  from?: string;
+  to?: string;
   sort?: string;
   page: number;
   pageSize: number;

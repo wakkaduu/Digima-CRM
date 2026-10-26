@@ -38,8 +38,9 @@ const COLUMNS: Column<CustomerRow>[] = [
     ),
   },
   { id: 'status', header: 'Status', cell: (c) => <ActiveBadge active={c.active} /> },
-  { id: 'openEstimates', header: 'Open estimates', align: 'right', sortable: true, cell: (c) => c.openEstimates },
-  { id: 'balance', header: 'Balance', align: 'right', sortable: true, cell: (c) => peso(c.balance) },
+  // A zero is printed, in grey: nothing open, nothing owed.
+  { id: 'openEstimates', header: 'Open estimates', align: 'right', sortable: true, cell: (c) => <span className={c.openEstimates === 0 ? 'text-text-muted' : undefined}>{c.openEstimates}</span> },
+  { id: 'balance', header: 'Balance', align: 'right', sortable: true, cell: (c) => <span className={c.balance === 0 ? 'text-text-muted' : 'font-semibold'}>{peso(c.balance)}</span> },
   { id: 'lastPayment', header: 'Last payment', sortable: true, className: 'whitespace-nowrap', cell: (c) => (c.lastPaymentAt ? <RelativeTime value={c.lastPaymentAt} /> : <span className="text-text-muted">None yet</span>) },
 ];
 const SORTABLE = COLUMNS.filter((c) => c.sortable).map((c) => c.id);

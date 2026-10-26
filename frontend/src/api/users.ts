@@ -12,9 +12,10 @@ export interface InviteResult {
 }
 
 /** SuperAdmin only: every account, active or not. */
-export const useTeam = () =>
+export const useTeam = (enabled = true) =>
   useQuery({
     queryKey: TEAM_KEY,
+    enabled,
     queryFn: async () => (await api<{ users: TeamMember[] }>('/api/users')).users,
   });
 

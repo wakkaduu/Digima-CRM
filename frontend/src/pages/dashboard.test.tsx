@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CommandPalette } from '../components/shell/CommandPalette';
 import { mockApi, renderWithProviders } from '../test/renderWithProviders';
+import { fetchFrom } from '../components/dashboard/overview';
 import DashboardPage, { greeting } from './DashboardPage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -99,6 +100,68 @@ describe('Admin dashboard', () => {
     expect(await screen.findByText('Done Co')).toBeInTheDocument();
     expect(await screen.findByText('Connected')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Submit payment/ })).not.toBeInTheDocument(); // admins review, reps submit
+  });
+});
+
+describe('SuperAdmin overview', () => {
+  const superadmin = { id: 'x1', name: 'Sol Owner', email: 'o@x.test', role: 'superadmin' as const, mustChangePassword: false };
+  const done = (id: string, status: 'approved' | 'rejected', amount: string, bank: string, hAgo: number) => ({
+    id, customerName: `${id} Co`, status, amountSubmitted: amount, finalAmount: status === 'approved' ? amount : null, bankDepositedTo: bank,
+    submittedBy: 'Sam', reviewedBy: 'Ana Admin', reviewedAt: hoursAgo(hAgo), createdAt: hoursAgo(hAgo + 5),
+  });
+
+  it('leads with the finding, the approved total and where the money landed', async () => {
+    mockApi({
+      'GET /api/auth/me': [200, { user: superadmin }],
+      [`GET /api/payments?sort=createdAt%3Adesc&page=1&pageSize=100&from=${fetchFrom()}`]: [
+        200,
+        { items: [done('a', 'approved', '1000.00', 'BDO', 3), done('b', 'approved', '2500.50', 'Cash', 6), done('c', 'rejected', '700.00', 'BDO', 8)], total: 3, page: 1, pageSize: 100 },
+      ],
+      'GET /api/payments?status=pending&sort=createdAt%3Aasc&page=1&pageSize=100': [
+        200,
+        {
+          items: [
+            { id: 'o1', customerName: 'Older Co', submittedBy: 'Tina', bankDepositedTo: 'Cash', amountSubmitted: '1500.00', createdAt: hoursAgo(50), status: 'pending' },
+            { id: 'n1', customerName: 'Newer Co', submittedBy: 'Sam', bankDepositedTo: 'BDO', amountSubmitted: '500.00', createdAt: hoursAgo(1), status: 'pending' },
+          ],
+          total: 2, page: 1, pageSize: 100,
+        },
+      ],
+      'GET /api/users': [200, { users: [{ id: 'u1', active: true, invitePending: false }, { id: 'u2', active: true, invitePending: true }, { id: 'u3', active: false, invitePending: false }] }],
+      'GET /api/customers?status=active&page=1&pageSize=1': [200, { items: [], total: 0, page: 1, pageSize: 1, counts: { all: 20, active: 18, inactive: 2 } }],
+      'GET /api/estimates?page=1&pageSize=1': [200, { items: [], total: 0, page: 1, pageSize: 1, counts, lookbackDays: 90 }],
+    });
+    renderWithProviders(<DashboardPage />, '/dashboard');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
+    expect(await screen.findByText(/2 payments \(₱2,000\.00\) are waiting for review\. The oldest has waited 2 days\./)).toBeInTheDocument();
+    const approved = await screen.findByRole('region', { name: 'Approved payments' });
+    expect(within(approved).getByText('₱3,500.50')).toBeInTheDocument(); // 1,000.00 + 2,500.50
+    expect(within(approved).getByText(/from 2 approved payments/)).toBeInTheDocument();
+    expect(within(approved).getByRole('img', { name: /Approved per day/ })).toBeInTheDocument();
+    expect(await screen.findByText('1 rejected (33.3%)')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Active customers.*18/ })).toHaveAttribute('href', '/customers?tab=active');
+    expect(screen.getByRole('link', { name: /Team members.*2.*1 invite not accepted yet/ })).toHaveAttribute('href', '/settings/team');
+    const accounts = screen.getByRole('region', { name: /Approved by account/ });
+    expect(within(accounts).getByText('₱2,500.50')).toBeInTheDocument(); // Cash
+    expect(within(accounts).getAllByText('₱0.00').length).toBeGreaterThan(0); // a real zero prints as a zero
+    expect(screen.queryByRole('link', { name: /review queue|Approvals/ })).not.toBeInTheDocument(); // read-only: approving stays with admins
+  });
+
+  it('says so when nothing is waiting or decided', async () => {
+    mockApi({
+      'GET /api/auth/me': [200, { user: superadmin }],
+      [`GET /api/payments?sort=createdAt%3Adesc&page=1&pageSize=100&from=${fetchFrom()}`]: [200, { items: [], total: 0, page: 1, pageSize: 100 }],
+      'GET /api/payments?status=pending&sort=createdAt%3Aasc&page=1&pageSize=100': [200, { items: [], total: 0, page: 1, pageSize: 100 }],
+      'GET /api/users': [200, { users: [] }],
+      'GET /api/customers?status=active&page=1&pageSize=1': [502, { error: { message: 'down' } }],
+      'GET /api/estimates?page=1&pageSize=1': [502, { error: { message: 'down' } }],
+    });
+    renderWithProviders(<DashboardPage />, '/dashboard');
+    expect(await screen.findByText('Nothing is waiting for review.')).toBeInTheDocument();
+    expect(await screen.findByText('No payments have been reviewed yet.')).toBeInTheDocument();
+    expect(await screen.findByText('None reviewed yet')).toBeInTheDocument();
+    expect((await screen.findAllByText('QuickBooks unavailable')).length).toBe(2);
   });
 });
 

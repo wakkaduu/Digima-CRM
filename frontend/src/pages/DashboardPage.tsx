@@ -18,6 +18,8 @@ export default function DashboardPage() {
   useDocumentTitle('Dashboard');
   const { data: me } = useMe();
   if (!me) return null;
+  // The SuperAdmin overview is titled by what it is and carries its own header (the finding replaces the date).
+  if (me.role === 'superadmin') return <ExecutiveDashboard />;
   const first = me.name.split(/\s+/)[0];
 
   return (
@@ -26,7 +28,7 @@ export default function DashboardPage() {
         title={`${greeting()}, ${first}`}
         description={today()}
       />
-      {me.role === 'admin' ? <AdminDashboard /> : me.role === 'superadmin' ? <ExecutiveDashboard /> : <SalesDashboard />}
+      {me.role === 'admin' ? <AdminDashboard /> : <SalesDashboard />}
     </div>
   );
 }

@@ -63,41 +63,43 @@ export function FilterBar({ search, tabs, filters = [], onFilterChange, onClearA
   );
 
   return (
-    <div className={cn('mb-3 space-y-2', className)}>
-      {tabs && (
-        <div role="group" aria-label={tabs.label} className="flex flex-wrap gap-1">
-          {tabs.items.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              aria-pressed={tabs.value === t.id}
-              onClick={() => tabs.onChange(t.id)}
-              className={cn(
-                'min-h-(--control-h) rounded-control border px-3 whitespace-nowrap',
-                tabs.value === t.id ? 'border-accent bg-accent-subtle font-semibold text-accent' : 'border-border bg-surface text-text',
-              )}
-            >
-              {t.label} {t.count !== undefined && <span className="tabular-nums text-text-muted">{t.count}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Input
-          type="search"
-          enterKeyHint="search"
-          aria-label={search.label}
-          placeholder={search.placeholder}
-          value={search.value}
-          onChange={(e) => search.onChange(e.target.value)}
-        />
-        {filters.length > 0 && (
-          <Button aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)} className="shrink-0">
-            Filters{active.length ? ` (${active.length})` : ''}
-            <ChevronDown aria-hidden className={cn('size-4', open && desktop && 'rotate-180')} />
-          </Button>
+    <div className={cn('mb-4 space-y-2', className)}>
+      <div className={cn('flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between', tabs && 'lg:border-b lg:border-border')}>
+        {tabs && (
+          <div role="group" aria-label={tabs.label} className="-mb-px flex gap-5 overflow-x-auto border-b border-border lg:border-b-0">
+            {tabs.items.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={tabs.value === t.id}
+                onClick={() => tabs.onChange(t.id)}
+                className={cn(
+                  'min-h-(--control-h) border-b-2 whitespace-nowrap',
+                  tabs.value === t.id ? 'border-text font-semibold text-text' : 'border-transparent text-text-muted hover:text-text',
+                )}
+              >
+                {t.label} {t.count !== undefined && <span className="tabular-nums text-text-muted">{t.count}</span>}
+              </button>
+            ))}
+          </div>
         )}
+
+        <div className={cn('flex gap-2', tabs ? 'lg:w-80 lg:pb-2' : 'lg:w-full')}>
+          <Input
+            type="search"
+            enterKeyHint="search"
+            aria-label={search.label}
+            placeholder={search.placeholder}
+            value={search.value}
+            onChange={(e) => search.onChange(e.target.value)}
+          />
+          {filters.length > 0 && (
+            <Button aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)} className="shrink-0">
+              Filters{active.length ? ` (${active.length})` : ''}
+              <ChevronDown aria-hidden className={cn('size-4', open && desktop && 'rotate-180')} />
+            </Button>
+          )}
+        </div>
       </div>
 
       {desktop && open && <div id={panelId}>{selects}</div>}
