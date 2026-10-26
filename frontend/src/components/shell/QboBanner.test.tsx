@@ -16,13 +16,19 @@ describe('QboBanner', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('asks the user to sign in again when the connection is missing, and returns them to the same page', async () => {
-    banner({ connected: false, needsReauth: true }, '/estimates?tab=Accepted');
-    expect(await screen.findByRole('alert')).toHaveTextContent('has expired');
-    expect(screen.getByRole('link', { name: 'Sign in with QuickBooks' })).toHaveAttribute(
+  it('asks someone who has never connected (for example an email login) to connect, and returns them to the same page', async () => {
+    banner({ connected: false, needsReauth: false }, '/estimates?tab=Accepted');
+    expect(await screen.findByRole('alert')).toHaveTextContent('not connected to your account yet');
+    expect(screen.getByRole('link', { name: 'Connect QuickBooks' })).toHaveAttribute(
       'href',
-      '/api/auth/qbo/login?next=%2Festimates%3Ftab%3DAccepted',
+      '/api/auth/qbo/login?mode=connect&next=%2Festimates%3Ftab%3DAccepted',
     );
+  });
+
+  it('asks to reconnect when the connection has expired', async () => {
+    banner({ connected: false, needsReauth: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('has expired');
+    expect(screen.getByRole('link', { name: 'Reconnect QuickBooks' })).toBeInTheDocument();
   });
 
   it('warns ahead of time when the connection lapses within two weeks', async () => {

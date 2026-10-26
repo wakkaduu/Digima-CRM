@@ -47,8 +47,8 @@ function InviteLinkDialog({ invite, onClose }: { invite: InviteResult | null; on
       {invite && (
         <>
           <p className="mb-3">
-            Send this link to <strong>{invite.user.name}</strong>. They open it and sign in with the QuickBooks login they use
-            for work; that links their account. It works once and expires on {dateShort(invite.inviteExpiresAt)}.
+            Send this link to <strong>{invite.user.name}</strong>. They open it and either sign in with the QuickBooks login they
+            use for work, or choose a password and sign in with <strong>{invite.user.email}</strong>. It works once and expires on {dateShort(invite.inviteExpiresAt)}. Sending a new link also resets a forgotten password.
           </p>
           <Field id="invite-link" label="One-time invite link" hint="It is shown only now. If you lose it, create a new one.">
             {(aria) => (
@@ -121,7 +121,7 @@ function AddPersonDialog({ open, onClose, onInvited }: { open: boolean; onClose:
           label="Email"
           type="email"
           autoComplete="off"
-          hint="Only a label so you can recognise them. Their QuickBooks login is linked when they open the invite link."
+          hint="The email they will log in with if they choose a password. QuickBooks sign-in does not depend on it."
           value={email}
           error={errors.email}
           onChange={(e) => (setEmail(e.target.value), setErrors((x) => ({ ...x, email: undefined })))}
@@ -236,9 +236,9 @@ export default function TeamPage() {
                     <Access member={m} />
                   </div>
                   <div className="flex gap-2 lg:order-4 lg:justify-end">
-                    {m.active && !isMe && (
-                      <Button size="sm" loading={reinvite.isPending && reinvite.variables === m.id} onClick={() => newInvite(m)} aria-label={`New invite link for ${m.name}`}>
-                        <Link2 aria-hidden className="size-4" /> {m.linked ? 'New invite link' : 'Invite link'}
+                    {m.active && (
+                      <Button size="sm" loading={reinvite.isPending && reinvite.variables === m.id} onClick={() => newInvite(m)} aria-label={isMe ? 'Get a link to set your own password' : `New invite link for ${m.name}`}>
+                        <Link2 aria-hidden className="size-4" /> {isMe ? 'Set a password' : m.linked ? 'New invite link' : 'Invite link'}
                       </Button>
                     )}
                     {m.active ? (

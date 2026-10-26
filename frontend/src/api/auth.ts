@@ -20,6 +20,13 @@ export const homePath = (_user: User) => '/dashboard';
 export const signInUrl = (next?: string | null) =>
   next && safeNext(next) ? `/api/auth/qbo/login?next=${encodeURIComponent(next)}` : '/api/auth/qbo/login';
 
+/**
+ * Where a user who is already signed in (by email or QuickBooks) goes to connect or renew their own QuickBooks
+ * connection. Same Intuit sign-in, but it attaches to the current account instead of starting a session.
+ */
+export const connectUrl = (next?: string | null) =>
+  `/api/auth/qbo/login?mode=connect${next && safeNext(next) ? `&next=${encodeURIComponent(next)}` : ''}`;
+
 /** Only same-site paths are allowed as a post-login destination (no open redirects). */
 export const safeNext = (next: string | null) =>
   next && next.startsWith('/') && !next.startsWith('//') ? next : null;

@@ -37,7 +37,7 @@ describe('queryClient QuickBooks sign-in', () => {
 
   it('sends the user through QuickBooks sign-in when a read finds the connection expired, then back to the same page', async () => {
     await queryClient.fetchQuery({ queryKey: ['reauth-1'], queryFn: reauth }).catch(() => undefined);
-    expect(assign).toHaveBeenCalledWith('/api/auth/qbo/login?next=%2Fcustomers%3Ftab%3Dactive');
+    expect(assign).toHaveBeenCalledWith('/api/auth/qbo/login?mode=connect&next=%2Fcustomers%3Ftab%3Dactive');
   });
 
   it('does not loop: a second failure right after shows the error instead of redirecting again', async () => {

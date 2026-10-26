@@ -34,6 +34,24 @@ export const linkWithInvite = (hash: string, qboSub: string) =>
     return claimed.count === 1 ? tx.user.findUnique({ where: { qboSub } }) : null;
   });
 
+export const updatePassword = (id: string, passwordHash: string) =>
+  prisma.user.update({ where: { id }, data: { passwordHash, mustChangePassword: false } });
+
+/**
+ * Uses up an invite to set the person's first password (or reset it), in one atomic step so two browsers racing with the
+ * same link cannot both win. Null when the link is unknown, expired, used, or the account is deactivated.
+ */
+export const setPasswordWithInvite = (hash: string, passwordHash: string) =>
+  prisma.$transaction(async (tx) => {
+    const invited = await tx.user.findUnique({ where: { inviteTokenHash: hash } });
+    if (!invited) return null;
+    const claimed = await tx.user.updateMany({
+      where: { id: invited.id, inviteTokenHash: hash, inviteExpiresAt: { gt: new Date() }, active: true },
+      data: { passwordHash, mustChangePassword: false, inviteTokenHash: null, inviteExpiresAt: null },
+    });
+    return claimed.count === 1 ? tx.user.findUnique({ where: { id: invited.id } }) : null;
+  });
+
 export const create = (data: Prisma.UserCreateInput) => prisma.user.create({ data });
 
 export const update = (id: string, data: Prisma.UserUpdateInput) => prisma.user.update({ where: { id }, data });

@@ -3,7 +3,7 @@ import env from '../config/env';
 import { OAuthClient, createOAuthClient } from '../config/qbo';
 import * as userModel from '../models/user.model';
 import { saveTokens } from './qbo.service';
-import { decideSignIn, type SignInFailure } from './signInDecision';
+import { decideConnect, decideSignIn, type SignInFailure } from './signInDecision';
 
 export type { SignInFailure };
 
@@ -11,7 +11,8 @@ export type { SignInFailure };
 
 // "Sign in with QuickBooks": one Intuit authorization gives us who the person is (the verified OpenID `sub`)
 // and a QuickBooks token of their own. Accounts are linked to an Intuit id by accepting a one-time invite link
-// (see invite.service.ts); email is not used, because the production app does not receive it.
+// (see invite.service.ts) or by connecting while signed in by email; the Intuit email is never used, because the
+// production app does not receive it.
 
 export function getAuthorizeUrl(state: string) {
     return createOAuthClient().authorizeUri({
@@ -27,8 +28,10 @@ export class SignInError extends Error {
     }
 }
 
-/** Completes the OAuth redirect: verifies the Intuit identity, applies the invite if any, stores their QuickBooks tokens. */
-export async function signIn(params: { code: string; state: string; realmId: string }, inviteHash?: string | null): Promise<User> {
+type CallbackParams = { code: string; state: string; realmId: string };
+
+/** The part both sign-in and connect share: exchange the code, verify the signed ID token, check the company. */
+async function verifyAuthorization(params: CallbackParams): Promise<{ tokens: any; sub: string }> {
     // The query string is browser-supplied, so this is only an early exit; the company in the signed ID token decides below.
     if (params.realmId !== env.QBO_REALM_ID) {
         // Company ids are not secrets; seeing both makes "wrong company" easy to explain.
@@ -79,6 +82,12 @@ export async function signIn(params: { code: string; state: string; realmId: str
         console.warn(`QBO sign-in refused: the ID token says company ${profile?.realmid ?? '(none)'} but the callback said ${params.realmId}; this portal serves ${env.QBO_REALM_ID}.`);
         throw new SignInError('wrong_company');
     }
+    return { tokens, sub };
+}
+
+/** Completes the OAuth redirect: verifies the Intuit identity, applies the invite if any, stores their QuickBooks tokens. */
+export async function signIn(params: CallbackParams, inviteHash?: string | null): Promise<User> {
+    const { tokens, sub } = await verifyAuthorization(params);
 
     const decision = decideSignIn({
         sub,
@@ -119,6 +128,32 @@ export async function signIn(params: { code: string; state: string; realmId: str
 
     await saveTokens(user.id, tokens, env.QBO_REALM_ID);
     return user;
+}
+
+/**
+ * "Connect QuickBooks" for someone who is already signed in (typically by email and password): attaches their own
+ * QuickBooks connection to their account, and links their Intuit login to it the first time.
+ */
+export async function connect(params: CallbackParams, userId: string): Promise<User> {
+    const { tokens, sub } = await verifyAuthorization(params);
+    const user = await userModel.findById(userId);
+    if (!user) throw new SignInError('sign_in_failed');
+
+    const decision = decideConnect({ sub, user, owner: await userModel.findByQboSub(sub), bootstrapSub: env.SUPERADMIN_QBO_SUB });
+    console.info(`QBO connect: user=${userId} intuitId=${sub} decision=${decision.action}${decision.action === 'refuse' ? `(${decision.reason})` : ''}`);
+    if (decision.action === 'refuse') throw new SignInError(decision.reason);
+
+    let linked = user;
+    if (!user.qboSub) {
+        try {
+            linked = await userModel.update(user.id, { qboSub: sub });
+        } catch (err: any) {
+            if (err.code === 'P2002') throw new SignInError('already_linked'); // someone linked this Intuit login a moment ago
+            throw err;
+        }
+    }
+    await saveTokens(linked.id, tokens, env.QBO_REALM_ID);
+    return linked;
 }
 
 /** SUPERADMIN_QBO_SUB: finds or creates the SuperAdmin account (labelled with SUPERADMIN_EMAIL) and makes sure it is usable. */

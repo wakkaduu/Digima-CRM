@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import type { Request, Response } from 'express';
 import env from '../config/env';
+import { loadUser } from '../middleware/requireRole';
 import asyncHandler from '../utils/asyncHandler';
 import HttpError from '../utils/HttpError';
 import * as qbo from '../services/qbo.service';
@@ -28,48 +28,73 @@ const safeEqual = (a: unknown, b: unknown) => {
     return crypto.timingSafeEqual(ha, hb);
 };
 
-// GET /api/auth/qbo/login?next=/some/path   (public)
-export const login = (req: Request, res: Response) => {
+// GET /api/auth/qbo/login?next=/some/path[&mode=connect]   (public; connect needs a signed-in user)
+// Without `mode`, this is "Sign in with QuickBooks". With mode=connect, a user who is already signed in (typically by
+// email and password) attaches their own QuickBooks connection to their account.
+export const login = asyncHandler(async (req, res) => {
     const state = crypto.randomBytes(16).toString('hex');
     const next = safeNextSchema.safeParse(req.query.next);
+    let connectUserId: string | null = null;
+    if (req.query.mode === 'connect') {
+        const user = await loadUser(req);
+        if (!user) return res.redirect(`${env.FRONTEND_URL}/login`);
+        connectUserId = user.id;
+    }
     req.session!.qboState = state;
     req.session!.next = next.success ? next.data : null;
+    req.session!.connectUserId = connectUserId;
     res.redirect(qboAuth.getAuthorizeUrl(state));
-};
+});
 
 // GET /api/auth/qbo/callback   (public; Intuit redirects the browser here)
-// Failures go back to the login page as ?error=<code> because the browser, not a script, is waiting.
+// Failures go back to the login page (or, when connecting, the QuickBooks page) as ?error=<code> because the browser,
+// not a script, is waiting.
 export const callback = asyncHandler(async (req, res) => {
     const { state, error } = req.query;
-    const toLogin = (code: string) => res.redirect(`${env.FRONTEND_URL}/login?error=${encodeURIComponent(code)}`);
 
     const expectedState = req.session!.qboState;
     const next = req.session!.next;
     const inviteHash = req.session!.inviteHash;
+    const connectUserId = req.session!.connectUserId;
     req.session!.qboState = null;
     req.session!.inviteHash = null;
     req.session!.next = null;
+    req.session!.connectUserId = null;
+
+    const fail = (code: string) =>
+        res.redirect(
+            connectUserId
+                ? `${env.FRONTEND_URL}/settings/integrations?error=${encodeURIComponent(code)}`
+                : `${env.FRONTEND_URL}/login?error=${encodeURIComponent(code)}`,
+        );
 
     if (error) {
         console.error('QBO sign-in refused by Intuit:', String(error), String(req.query.error_description ?? ''));
-        return toLogin(error === 'access_denied' ? 'access_denied' : 'sign_in_failed');
+        return fail(error === 'access_denied' ? 'access_denied' : 'sign_in_failed');
     }
     if (!expectedState || !state || !safeEqual(state, expectedState)) {
         console.error('QBO sign-in failed: the state did not match the session (cookie lost or the page was reloaded).');
-        return toLogin('sign_in_failed');
+        return fail('sign_in_failed');
     }
 
     const params = callbackParamsSchema.safeParse(req.query);
     if (!params.success) {
         console.error('QBO sign-in failed: the callback is missing or has malformed code/state/realmId.');
-        return toLogin('sign_in_failed');
+        return fail('sign_in_failed');
     }
 
     try {
+        if (connectUserId) {
+            // Only for the account that started it: someone who signed out and in as another person meanwhile gets nothing.
+            const current = await loadUser(req);
+            if (!current || current.id !== connectUserId) return fail('sign_in_failed');
+            await qboAuth.connect(params.data, current.id);
+            return res.redirect(`${env.FRONTEND_URL}${next || '/settings/integrations'}`);
+        }
         const user = await qboAuth.signIn(params.data, inviteHash);
-        req.session!.user = { id: user.id, name: user.name, role: user.role };
+        req.session = { user: { id: user.id, name: user.name, role: user.role } }; // a brand-new session
     } catch (err) {
-        if (err instanceof qboAuth.SignInError) return toLogin(err.code);
+        if (err instanceof qboAuth.SignInError) return fail(err.code);
         throw err;
     }
     res.redirect(`${env.FRONTEND_URL}${next || '/'}`);

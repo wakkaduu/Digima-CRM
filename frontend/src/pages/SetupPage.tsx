@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link2, RefreshCw, FlaskConical } from 'lucide-react';
 import { api } from '../api/client';
 import { QBO_REAUTH_KEY, QBO_STATUS_KEY } from '../api/qbo';
 import type { Estimate, QboStatus } from '../api/types';
-import { signInUrl, useMe } from '../api/auth';
+import { connectUrl, useMe } from '../api/auth';
 import { useTeam } from '../api/users';
 import { Row, Section } from '../components/dashboard/Section';
 import { Access } from '../components/team/Access';
@@ -15,6 +16,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { dateShort, dateTime } from '../lib/format';
+import { signInError } from '../lib/signInErrors';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 interface TestResult {
@@ -38,6 +40,8 @@ export default function SetupPage() {
   useDocumentTitle('QuickBooks');
   const qc = useQueryClient();
   const { data: me } = useMe();
+  const [params] = useSearchParams();
+  const failure = signInError(params.get('error')); // set when connecting QuickBooks came back refused
   const team = useTeam(me?.role === 'superadmin'); // the list is SuperAdmin-only; the server refuses it for anyone else
 
   // Asks Intuit to confirm the link, so this is the authoritative check.
@@ -72,11 +76,12 @@ export default function SetupPage() {
       ? `Connected to ${s.companyName ?? 'QuickBooks'}.${days !== undefined ? ` The link stays valid for ${days} more ${days === 1 ? 'day' : 'days'}.` : ''}`
       : s.connected
         ? 'QuickBooks needs you to sign in again before anything can be posted.'
-        : 'QuickBooks is not connected. Sign in with QuickBooks to start.';
+        : 'QuickBooks is not connected to your account yet. Connect it to start.';
 
   return (
     <div>
       <PageHeader title="QuickBooks" description={finding} />
+      {failure && <Message focus>{failure}</Message>}
 
       <div className="space-y-4">
         <Card className="space-y-5 p-5">
@@ -122,15 +127,15 @@ export default function SetupPage() {
           )}
           {s?.verifyError && (
             <Message type="error" className="mb-0">
-              QuickBooks rejected the saved connection: {s.verifyError}. Sign in with QuickBooks again to fix it.
+              QuickBooks rejected the saved connection: {s.verifyError}. Reconnect to fix it.
             </Message>
           )}
 
           <div className="flex flex-wrap gap-2">
             {/* A real navigation: the backend redirects to Intuit and back. */}
-            <a href={signInUrl('/settings/integrations')} className={buttonClass({ variant: healthy ? 'secondary' : 'primary' })}>
+            <a href={connectUrl('/settings/integrations')} className={buttonClass({ variant: healthy ? 'secondary' : 'primary' })}>
               <Link2 aria-hidden className="size-4" />
-              {s?.connected ? 'Reconnect to QuickBooks' : 'Sign in with QuickBooks'}
+              {s?.connected ? 'Reconnect to QuickBooks' : 'Connect QuickBooks'}
             </a>
             <Button onClick={() => status.refetch()} loading={status.isFetching && !status.isPending}>
               <RefreshCw aria-hidden className="size-4" />

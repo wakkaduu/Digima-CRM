@@ -32,7 +32,8 @@ describe('TeamPage', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Role for Cy Boss' })).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Deactivate Cy Boss' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reactivate Old Hand' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /invite link for Cy Boss/ })).not.toBeInTheDocument();
+    // You can get a link for yourself too: it is how a SuperAdmin without a password sets one.
+    expect(screen.getByRole('button', { name: 'Get a link to set your own password' })).toBeInTheDocument();
   });
 
   it('changes a role straight from the list', async () => {
