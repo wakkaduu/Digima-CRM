@@ -30,7 +30,7 @@ export function HistoryList({ payments, selectedId }: { payments: HistoryPayment
               Estimate #{estimateOf(p)} · {bankLabel(p.bankDepositedTo)} · {p.submittedBy}
             </span>
             <span className="mt-1.5 flex flex-wrap items-center gap-2 text-small text-text-muted">
-              <StatusBadge status={p.status === 'rejected' ? 'rejected' : 'approved'} />
+              <StatusBadge status={p.status} />
               {p.reviewedBy && p.reviewedAt && (
                 <span>
                   by {p.reviewedBy} <RelativeTime value={p.reviewedAt} />

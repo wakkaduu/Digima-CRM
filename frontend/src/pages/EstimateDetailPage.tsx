@@ -4,6 +4,7 @@ import { useMe } from '../api/auth';
 import { useEstimate } from '../api/crm';
 import { ApiError } from '../api/client';
 import { EstimateProgress } from '../components/crm/EstimateProgress';
+import { InvoiceBalance } from '../components/crm/InvoiceBalance';
 import { LinkedPayments } from '../components/crm/LinkedPayments';
 import { buttonClass } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -57,6 +58,8 @@ export default function EstimateDetailPage() {
         </div>
         <EstimateProgress total={e.totalAmount} approved={e.approvedAmount} pending={e.pendingAmount} />
       </Card>
+
+      <InvoiceBalance estimateId={e.id} approvedAmount={e.approvedAmount} />
 
       <Card>
         <h2 className="mb-3 text-body font-semibold">Details</h2>

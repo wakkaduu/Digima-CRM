@@ -7,7 +7,7 @@ import { AppShell } from './shell/AppShell';
 import { PageSkeleton } from './ui/Skeletons';
 
 /**
- * Route guard + app shell: redirects to login / password change as needed.
+ * Route guard + app shell: sends signed-out visitors to the sign-in page.
  * `roles` limits the route to those roles; anyone else is sent to their own home page.
  */
 export function RequireAuth({ roles }: { roles?: Role[] }) {
@@ -29,7 +29,6 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
     );
   }
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(pathname)}`} replace />;
-  if (user.mustChangePassword && pathname !== '/password') return <Navigate to="/password" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to={homePath(user)} replace />;
 
   return (

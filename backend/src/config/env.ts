@@ -26,6 +26,15 @@ const schema = z.object({
     QBO_CLIENT_SECRET: z.string().min(1),
     QBO_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
     QBO_REDIRECT_URI: z.string().url(),
+    // The one QuickBooks company this portal serves. Anyone signing in from another company is rejected.
+    QBO_REALM_ID: z.string().regex(/^\d+$/, 'QBO_REALM_ID is the numeric company id shown in QuickBooks'),
+    // The operator's own Intuit id (the `sub` printed in the log by the first refused sign-in). It always signs in as
+    // SuperAdmin, which lets the first account in and recovers a lockout. SUPERADMIN_EMAIL is only the label of that account.
+    SUPERADMIN_QBO_SUB: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(1).optional()),
+    SUPERADMIN_EMAIL: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().toLowerCase().email().optional()),
+    // Encrypts the stored QuickBooks tokens (AES-256-GCM). 32 random bytes, base64: `openssl rand -base64 32`.
+    // Changing or losing it just sends everyone back through "Sign in with QuickBooks".
+    TOKEN_ENCRYPTION_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().refine((v) => Buffer.from(v, 'base64').length === 32, 'TOKEN_ENCRYPTION_KEY must be 32 random bytes, base64-encoded (openssl rand -base64 32)').optional()),
     QBO_DEPOSIT_ACCOUNT_BDO: z.string().optional(),
     QBO_DEPOSIT_ACCOUNT_UNIONBANK: z.string().optional(),
     QBO_DEPOSIT_ACCOUNT_DIGIMA: z.string().optional(),
@@ -36,6 +45,9 @@ const schema = z.object({
     SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 chars'),
     DEFAULT_FEE_PERCENT: z.coerce.number().min(0).max(20).default(1.5), // pre-fills the approval screen's "apply fee" button
     ESTIMATE_LOOKBACK_DAYS: z.coerce.number().int().min(30).default(365),
+}).refine((v) => !v.SUPERADMIN_QBO_SUB || v.SUPERADMIN_EMAIL, {
+    path: ['SUPERADMIN_EMAIL'],
+    message: 'SUPERADMIN_EMAIL is required when SUPERADMIN_QBO_SUB is set (it labels the SuperAdmin account)',
 });
 
 export type Env = z.infer<typeof schema>;

@@ -26,6 +26,7 @@ const STATUS_TEXT: Record<PaymentStatus, string> = {
   pending: 'Pending review',
   approved: 'Approved',
   rejected: 'Rejected',
+  voided: 'Voided',
 };
 type Filter = 'all' | PaymentStatus;
 const TABS: { id: Filter; label: string }[] = [
@@ -33,6 +34,7 @@ const TABS: { id: Filter; label: string }[] = [
   { id: 'pending', label: 'Pending' },
   { id: 'approved', label: 'Approved' },
   { id: 'rejected', label: 'Rejected' },
+  { id: 'voided', label: 'Voided' },
 ];
 
 const estimateOf = (p: MyPayment) => p.qboEstimateNumber || p.qboEstimateId;
@@ -46,6 +48,11 @@ function Detail({ p }: { p: MyPayment }) {
       </div>
       {p.status === 'rejected' && p.rejectionReason && (
         <Message>Reason: {p.rejectionReason}</Message>
+      )}
+      {p.status === 'voided' && (
+        <Message type="warning">
+          An admin reversed this payment in QuickBooks{p.voidReason ? `: ${p.voidReason}` : '.'} It no longer counts toward the estimate.
+        </Message>
       )}
       <dl className="mb-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 [&_dt]:text-text-muted">
         <dt>Customer</dt>
@@ -140,6 +147,7 @@ export function MyPaymentsPage() {
       pending: all.filter((p) => p.status === 'pending').length,
       approved: all.filter((p) => p.status === 'approved').length,
       rejected: all.filter((p) => p.status === 'rejected').length,
+      voided: all.filter((p) => p.status === 'voided').length,
     }),
     [all],
   );

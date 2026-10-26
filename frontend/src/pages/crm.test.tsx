@@ -118,6 +118,35 @@ describe('Estimate detail', () => {
     expect(await screen.findByText('No payments yet')).toBeInTheDocument();
   });
 
+  it('shows what QuickBooks says is still owed on the invoice, and notes payments made outside the portal', async () => {
+    mockApi({
+      ...routes('admin'),
+      'GET /api/estimates/900/invoices': [
+        200,
+        { invoices: [{ id: '5', docNumber: '5001', txnDate: '2026-10-02', dueDate: null, total: 10000, balance: 4000 }], total: 10000, balance: 4000, paid: 6000 },
+      ],
+    });
+    view();
+    expect(await screen.findByText('₱4,000.00 still owed')).toBeInTheDocument();
+    expect(screen.getByText('Invoice #5001')).toBeInTheDocument();
+    // The portal has ₱3,000 approved but QuickBooks shows ₱6,000 paid: say so.
+    expect(screen.getByText(/QuickBooks shows ₱6,000.00 paid; the portal has ₱3,000.00 approved/)).toBeInTheDocument();
+  });
+
+  it('says "Paid in full" when the invoice balance is zero, and "No invoice yet" before one exists', async () => {
+    mockApi({
+      ...routes('admin'),
+      'GET /api/estimates/900/invoices': [200, { invoices: [{ id: '5', docNumber: '5001', txnDate: '2026-10-02', dueDate: null, total: 10000, balance: 0 }], total: 10000, balance: 0, paid: 10000 }],
+    });
+    const { unmount } = view();
+    expect(await screen.findByText('Paid in full')).toBeInTheDocument();
+    unmount();
+
+    mockApi({ ...routes('admin'), 'GET /api/estimates/900/invoices': [200, { invoices: [], total: 0, balance: 0, paid: 0 }] });
+    view();
+    expect(await screen.findByText(/No invoice yet/)).toBeInTheDocument();
+  });
+
   it('does not offer admins a way to record a payment (admins review, reps submit)', async () => {
     mockApi(routes('admin'));
     view();

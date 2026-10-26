@@ -12,11 +12,13 @@ declare module 'intuit-oauth' {
     }
 
     class OAuthClient {
-        static scopes: { Accounting: string; [k: string]: string };
+        static scopes: { Accounting: string; OpenId: string; Profile: string; Email: string; [k: string]: string };
         constructor(config: OAuthClientConfig);
         authorizeUri(opts: { scope: string[]; state?: string }): string;
         createToken(url: string): Promise<AuthResponse>;
         refreshUsingToken(refreshToken: string): Promise<AuthResponse>;
+        /** Checks issuer, audience, expiry and signature of the id_token from the last createToken() call. */
+        validateIdToken(): Promise<boolean>;
     }
 
     export = OAuthClient;

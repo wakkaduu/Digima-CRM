@@ -79,7 +79,7 @@ describe('Admin dashboard', () => {
           ],
         },
       ],
-      'GET /api/payments?status=approved%2Crejected&sort=createdAt%3Adesc&page=1&pageSize=5': [
+      'GET /api/payments?status=approved%2Crejected%2Cvoided&sort=createdAt%3Adesc&page=1&pageSize=5': [
         200,
         { items: [{ id: 'r1', customerName: 'Done Co', status: 'approved', amountSubmitted: '900', finalAmount: '886.5', reviewedBy: 'Ana Admin', reviewedAt: hoursAgo(3) }], total: 1, page: 1, pageSize: 5 },
       ],

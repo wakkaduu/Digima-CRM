@@ -9,6 +9,7 @@ import env from './config/env';
 import { notFound, errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth.routes';
 import qboRoutes from './routes/qbo.routes';
+import userRoutes from './routes/user.routes';
 import paymentRoutes from './routes/payment.routes';
 import configRoutes from './routes/config.routes';
 import { customerRoutes, estimateRoutes } from './routes/crm.routes';
@@ -47,12 +48,14 @@ app.use(
     })
 );
 
-// Brute-force protection for the access-code login
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 }));
+// Each sign-in attempt costs an Intuit round trip; cap them per client
+app.use('/api/auth/invite', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 })); // invite tokens are unguessable; this just stops hammering
+app.use('/api/auth/qbo/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/qbo', qboRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/customers', customerRoutes);

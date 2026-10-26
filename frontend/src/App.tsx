@@ -4,13 +4,14 @@ import { RequireAuth } from './components/RequireAuth';
 import { PageSkeleton } from './components/ui/Skeletons';
 import { LoginPage } from './pages/LoginPage';
 import { MyPaymentsPage } from './pages/MyPaymentsPage';
+import { InvitePage } from './pages/InvitePage';
 import { ForbiddenPage, NotFoundPage } from './pages/NotFoundPage';
-import { PasswordPage } from './pages/PasswordPage';
 import { SubmitPaymentPage } from './pages/SubmitPaymentPage';
 
-// Admin-only screens are split out of the main bundle.
+// Admin and SuperAdmin screens are split out of the main bundle.
 const AdminPendingPage = lazy(() => import('./pages/AdminPendingPage'));
 const SetupPage = lazy(() => import('./pages/SetupPage'));
+const TeamPage = lazy(() => import('./pages/TeamPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CustomersPage = lazy(() => import('./pages/CustomersPage'));
 const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'));
@@ -29,17 +30,17 @@ export function App() {
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/invite" element={<InvitePage />} />
         <Route element={<RequireAuth />}>
-          <Route path="/password" element={<PasswordPage />} />
           <Route path="/403" element={<ForbiddenPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
-        {/* Strict roles: sales submit payments, admins approve them. */}
+        {/* Strict roles: sales submit payments, admins approve them; SuperAdmins do neither. */}
         <Route element={<RequireAuth roles={['sales']} />}>
           <Route path="/payments/new" element={<SubmitPaymentPage />} />
           <Route path="/payments" element={<MyPaymentsPage />} />
         </Route>
-        <Route element={<RequireAuth roles={['sales', 'admin']} />}>
+        <Route element={<RequireAuth roles={['sales', 'admin', 'superadmin']} />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/customers" element={<CustomersPage />} />
@@ -49,9 +50,15 @@ export function App() {
         </Route>
         <Route element={<RequireAuth roles={['admin']} />}>
           <Route path="/payments/review/:id?" element={<AdminPendingPage />} />
-          <Route path="/settings/integrations" element={<SetupPage />} />
           <Route path="/admin/:id?" element={<Redirect to={(id) => (id ? `/payments/review/${id}` : '/payments/review')} />} />
           <Route path="/setup" element={<Redirect to={() => '/settings/integrations'} />} />
+        </Route>
+        <Route element={<RequireAuth roles={['admin', 'superadmin']} />}>
+          <Route path="/settings/integrations" element={<SetupPage />} />
+        </Route>
+        {/* SuperAdmin: who may sign in, and as what. */}
+        <Route element={<RequireAuth roles={['superadmin']} />}>
+          <Route path="/settings/team" element={<TeamPage />} />
         </Route>
       </Routes>
     </Suspense>

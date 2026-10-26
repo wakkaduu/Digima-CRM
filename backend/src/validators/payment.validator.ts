@@ -63,6 +63,7 @@ export const idSchema = z.string().uuid('Invalid payment id');
 
 export const approveSchema = z.object({ finalAmount: money });
 export const rejectSchema = z.object({ reason: z.string().trim().min(3, 'Please give a reason').max(300) });
+export const voidSchema = z.object({ reason: z.string().trim().min(3, 'Please give a reason').max(300) });
 
 /* ── Listing, filtering, receipts, idempotency ── */
 
@@ -72,14 +73,14 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the date format YYYY-MM
 export const SORTABLE = ['createdAt', 'amountSubmitted', 'customerName', 'status'] as const;
 export type SortField = (typeof SORTABLE)[number];
 
-const STATUSES = ['pending', 'approved', 'rejected'] as const;
+const STATUSES = ['pending', 'approved', 'rejected', 'voided'] as const;
 const BANK_KEYS = Object.values(BANK_MAP) as [string, ...string[]];
 
 // GET /api/payments?status=approved,rejected&q=acme&rep=<uuid>&bank=BDO&from=2026-10-01&to=2026-10-31&sort=createdAt:desc&page=1&pageSize=25
 export const listQuerySchema = z.object({
     status: z.preprocess(
         (v) => (typeof v === 'string' && v.trim() ? v.split(',').map((s) => s.trim()).filter(Boolean) : undefined),
-        z.array(z.enum(STATUSES)).max(3).optional()
+        z.array(z.enum(STATUSES)).max(4).optional()
     ),
     q: z.preprocess(blankToUndefined, z.string().trim().max(100).optional()),
     rep: z.preprocess(blankToUndefined, z.string().uuid('rep must be a user id').optional()),

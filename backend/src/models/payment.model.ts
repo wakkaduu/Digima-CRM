@@ -15,6 +15,7 @@ const MINE_SELECT = {
     bankDepositedTo: true,
     status: true,
     rejectionReason: true,
+    voidReason: true,
     createdAt: true,
     salesSeenAt: true,
     receivedOn: true,
@@ -94,11 +95,21 @@ export const rejectIfPending = async (id: string, data: Prisma.PaymentUncheckedU
     return count;
 };
 
+// Only touches the row if it is still approved; returns the number of rows changed.
+// salesSeenAt is cleared so the rep sees the change in their list.
+export const voidIfApproved = async (id: string, data: { voidedBy: string; voidReason: string }) => {
+    const { count } = await prisma.payment.updateMany({
+        where: { id, status: 'approved' },
+        data: { status: 'voided', voidedAt: new Date(), salesSeenAt: null, ...data },
+    });
+    return count;
+};
+
 export const markApprovedAsSeen = (userId: string) =>
     prisma.payment.updateMany({
         where: {
             submittedById: userId,
-            status: { in: ['approved', 'rejected'] },
+            status: { in: ['approved', 'rejected', 'voided'] },
             salesSeenAt: null,
         },
         data: { salesSeenAt: new Date() },
@@ -155,7 +166,7 @@ export async function search(q: ListQuery, scope: { role: 'admin' | 'sales'; use
 export const countPending = () => prisma.payment.count({ where: { status: 'pending' } });
 
 export const countUnseen = (userId: string) =>
-    prisma.payment.count({ where: { submittedById: userId, status: { in: ['approved', 'rejected'] }, salesSeenAt: null } });
+    prisma.payment.count({ where: { submittedById: userId, status: { in: ['approved', 'rejected', 'voided'] }, salesSeenAt: null } });
 
 /** The estimates this user submitted payments for most recently (newest first, no repeats). */
 export async function recentEstimateIds(userId: string, take = 5) {

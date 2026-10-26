@@ -1,5 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { Route, Routes } from 'react-router';
 import { LoginPage } from './LoginPage';
 import { mockApi, renderWithProviders } from '../test/renderWithProviders';
@@ -7,52 +6,64 @@ import { mockApi, renderWithProviders } from '../test/renderWithProviders';
 const page = (
   <Routes>
     <Route path="/login" element={<LoginPage />} />
-    <Route path="/" element={<p>Home screen</p>} />
-    <Route path="/payments/review" element={<p>Admin screen</p>} />
     <Route path="/dashboard" element={<p>Dashboard screen</p>} />
+    <Route path="/customers" element={<p>Customers screen</p>} />
   </Routes>
 );
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('LoginPage', () => {
-  it('shows field errors and does not call the API when the form is empty', async () => {
-    const fetchMock = mockApi({ 'GET /api/auth/me': [200, { user: null }] });
+  it('offers Sign in with QuickBooks as the only way in', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: null }] });
     renderWithProviders(page, '/login');
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Log in' }));
-
-    expect(await screen.findByText(/Enter your email address, for example/)).toBeInTheDocument();
-    expect(screen.getByText('Enter your password.')).toBeInTheDocument();
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+    expect(await screen.findByRole('link', { name: /Sign in with QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login');
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
   });
 
-  it('shows the server error for a wrong password', async () => {
-    mockApi({
-      'GET /api/auth/me': [200, { user: null }],
-      'POST /api/auth/login': [401, { error: { message: 'Incorrect email or password.' } }],
-    });
-    renderWithProviders(page, '/login');
+  it('remembers where the visitor was heading', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: null }] });
+    renderWithProviders(page, '/login?next=%2Fcustomers');
 
-    await userEvent.type(await screen.findByLabelText('Email address'), 'a@b.co');
-    await userEvent.type(screen.getByLabelText('Password'), 'wrong');
-    await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
+    expect(await screen.findByRole('link', { name: /Sign in with QuickBooks/ })).toHaveAttribute(
+      'href',
+      '/api/auth/qbo/login?next=%2Fcustomers',
+    );
   });
 
-  it('sends an admin to the dashboard after login', async () => {
-    const admin = { id: '1', name: 'Ann', email: 'a@b.co', role: 'admin', mustChangePassword: false };
-    mockApi({
-      'GET /api/auth/me': [200, { user: null }],
-      'POST /api/auth/login': [200, { user: admin }],
-    });
-    renderWithProviders(page, '/login');
+  it('ignores a return path that leaves the site', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: null }] });
+    renderWithProviders(page, '/login?next=%2F%2Fevil.example');
 
-    await userEvent.type(await screen.findByLabelText('Email address'), 'a@b.co');
-    await userEvent.type(screen.getByLabelText('Password'), 'secret123');
-    await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    expect(await screen.findByRole('link', { name: /Sign in with QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login');
+  });
 
-    await waitFor(() => expect(screen.getByText('Dashboard screen')).toBeInTheDocument());
+  it('explains why a sign-in was refused', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: null }] });
+    renderWithProviders(page, '/login?error=not_authorized');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('has not been invited yet');
+  });
+
+  it('tells someone with a dead invite link to ask for a new one', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: null }] });
+    renderWithProviders(page, '/login?error=invite_invalid');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ask a SuperAdmin for a new one');
+  });
+
+  it('falls back to a generic message for an unknown error code', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: null }] });
+    renderWithProviders(page, '/login?error=whatever');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign-in did not complete');
+  });
+
+  it('skips the page when already signed in', async () => {
+    mockApi({ 'GET /api/auth/me': [200, { user: { id: '1', name: 'Ann', email: 'a@b.co', role: 'admin' } }] });
+    renderWithProviders(page, '/login?next=%2Fcustomers');
+
+    expect(await screen.findByText('Customers screen')).toBeInTheDocument();
   });
 });

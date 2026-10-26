@@ -1,8 +1,9 @@
 import type { QboToken } from '@prisma/client';
 import * as qboTokenModel from '../models/qboToken.model';
 import * as paymentModel from '../models/payment.model';
-import { OAuthClient, createOAuthClient, API_BASE } from '../config/qbo';
+import { createOAuthClient, API_BASE } from '../config/qbo';
 import HttpError from '../utils/HttpError';
+import { currentQboUserId } from '../utils/requestContext';
 import env from '../config/env';
 
 // QuickBooks responses are external, loosely-typed JSON.
@@ -33,89 +34,67 @@ const MINOR_VERSION = 75;
 const REFRESH_BUFFER_MS = 5 * 60 * 1000; // refresh if < 5 min left
 const ESTIMATE_CACHE_TTL_MS = 60 * 1000;
 
-/* ───────────────────────── OAuth: connect ───────────────────────── */
+/* ───────────────────────── Tokens ───────────────────────── */
+// Sign-in itself (authorize URL, callback) lives in qboAuth.service.ts; this file only uses the
+// tokens it saves. Every QuickBooks call runs as the signed-in user (see utils/requestContext).
 
-export function getAuthorizeUrl(state: string) {
-    const client = createOAuthClient();
-    return client.authorizeUri({
-        scope: [OAuthClient.scopes.Accounting],
-        state,
-    });
-}
+const REAUTH_MESSAGE = 'Your QuickBooks connection has expired. Please sign in with QuickBooks again.';
+const reauthRequired = () => new HttpError(401, REAUTH_MESSAGE, { code: 'QBO_REAUTH_REQUIRED' });
 
-async function saveTokens(tokenJson: QboJson, realmId: string) {
+export async function saveTokens(userId: string, tokenJson: QboJson, realmId: string) {
     const now = Date.now();
-    const data = {
+    return qboTokenModel.save(userId, {
         realmId,
         accessToken: tokenJson.access_token,
         refreshToken: tokenJson.refresh_token,
         accessTokenExpiresAt: new Date(now + tokenJson.expires_in * 1000),
         refreshTokenExpiresAt: new Date(now + tokenJson.x_refresh_token_expires_in * 1000),
-    };
-    return qboTokenModel.save(data);
-}
-
-// `fullUrl` is the complete callback URL Intuit redirected to (contains code, realmId, state).
-export async function handleCallback(fullUrl: string) {
-    const realmId = new URL(fullUrl).searchParams.get('realmId');
-    if (!realmId) throw new HttpError(400, 'Missing realmId in QuickBooks callback');
-
-    const client = createOAuthClient();
-    const authResponse = await client.createToken(fullUrl);
-    return saveTokens(authResponse.getJson(), realmId);
+    });
 }
 
 /* ───────────────────────── OAuth: refresh ───────────────────────── */
 
-let refreshInFlight: Promise<QboToken> | null = null; // de-dupes concurrent refreshes (refresh tokens rotate!)
+const refreshInFlight = new Map<string, Promise<QboToken>>(); // per user; de-dupes concurrent refreshes (refresh tokens rotate!)
 
 async function refreshTokens(row: QboToken) {
     try {
         const client = createOAuthClient();
         const authResponse = await client.refreshUsingToken(row.refreshToken);
-        return await saveTokens(authResponse.getJson(), row.realmId);
+        return await saveTokens(row.userId, authResponse.getJson(), row.realmId);
     } catch (err: any) {
         console.error('QBO token refresh failed:', err.originalMessage || err.message);
-        throw new HttpError(
-            401,
-            'QuickBooks connection expired. An admin must reconnect QuickBooks.',
-            { code: 'QBO_REAUTH_REQUIRED' }
-        );
+        // Intuit says the refresh token is dead (revoked, or the user was removed from the company):
+        // forget it so the user is sent back through sign-in instead of retrying forever.
+        if (/invalid_grant/i.test(`${err.error ?? ''} ${err.originalMessage ?? ''} ${err.message ?? ''}`)) {
+            await qboTokenModel.remove(row.userId);
+        }
+        throw reauthRequired();
     }
 }
 
-async function getTokenRow({ force = false }: { force?: boolean } = {}): Promise<QboToken> {
-    const row = await qboTokenModel.get();
-    if (!row) {
-        throw new HttpError(409, 'QuickBooks is not connected yet.', { code: 'QBO_NOT_CONNECTED' });
-    }
-    if (row.refreshTokenExpiresAt <= new Date()) {
-        throw new HttpError(
-            401,
-            'QuickBooks connection expired. An admin must reconnect QuickBooks.',
-            { code: 'QBO_REAUTH_REQUIRED' }
-        );
-    }
+async function getTokenRow(userId: string, { force = false }: { force?: boolean } = {}): Promise<QboToken> {
+    const row = await qboTokenModel.get(userId);
+    if (!row || row.refreshTokenExpiresAt <= new Date()) throw reauthRequired();
 
     const stillValid = row.accessTokenExpiresAt.getTime() - Date.now() > REFRESH_BUFFER_MS;
     if (stillValid && !force) return row;
 
-    if (!refreshInFlight) {
-        refreshInFlight = refreshTokens(row).finally(() => {
-            refreshInFlight = null;
-        });
+    let inFlight = refreshInFlight.get(userId);
+    if (!inFlight) {
+        inFlight = refreshTokens(row).finally(() => refreshInFlight.delete(userId));
+        refreshInFlight.set(userId, inFlight);
     }
-    return refreshInFlight;
+    return inFlight;
 }
 
 /* ───────────────────────── Generic API caller ───────────────────────── */
-// Phase 4 will reuse this for POST /payment.
 
 export async function qboRequest(
     path: string,
     { method = 'GET', params = {}, body, retry = true }: QboRequestOptions = {}
 ): Promise<QboJson> {
-    const token = await getTokenRow();
+    const userId = currentQboUserId();
+    const token = await getTokenRow(userId);
 
     const url = new URL(`${API_BASE}/v3/company/${token.realmId}${path}`);
     url.searchParams.set('minorversion', String(MINOR_VERSION));
@@ -133,7 +112,7 @@ export async function qboRequest(
 
     // Token revoked/expired earlier than expected: refresh once and retry.
     if (res.status === 401 && retry) {
-        await getTokenRow({ force: true });
+        await getTokenRow(userId, { force: true });
         return qboRequest(path, { method, params, body, retry: false });
     }
 
@@ -146,11 +125,21 @@ export async function qboRequest(
     }
 
     if (!res.ok) {
-        const fault = json && json.Fault && json.Fault.Error && json.Fault.Error[0];
+        // The QuickBooks API says `Fault.Error[]`; Intuit's gateway (authorization failures) says `fault.error[]`.
+        const raw = json?.Fault?.Error?.[0] ?? json?.fault?.error?.[0];
+        const fault = raw && { code: raw.code ?? raw.Code, Message: raw.Message ?? raw.message, Detail: raw.Detail ?? raw.detail };
+        // What Intuit actually said, for the server log (never the tokens). intuit_tid is what Intuit support asks for.
+        console.error(`QBO API ${method} ${path.split('?')[0]} failed: ${res.status} ${res.statusText}`, {
+            user: userId,
+            realm: token.realmId,
+            intuit_tid: res.headers.get('intuit_tid') || undefined,
+            fault: fault || undefined,
+            body: fault ? undefined : text.slice(0, 300) || '(empty)',
+        });
         throw new HttpError(
             502,
-            `QuickBooks API error: ${fault ? `${fault.Message} - ${fault.Detail}` : res.statusText}`,
-            { intuitTid: res.headers.get('intuit_tid'), fault: json && json.Fault }
+            `QuickBooks API error: ${fault ? `${fault.Message}${fault.Detail ? ` - ${fault.Detail}` : ''}` : `${res.status} ${res.statusText}`}`,
+            { intuitTid: res.headers.get('intuit_tid'), fault: json && (json.Fault ?? json.fault) }
         );
     }
     return json;
@@ -161,14 +150,14 @@ export const runQuery = (sql: string): Promise<QboJson> => qboRequest('/query', 
 /* ───────────────────────── Company info (smoke test) ───────────────────────── */
 
 export async function getCompanyInfo() {
-    const token = await getTokenRow();
+    const token = await getTokenRow(currentQboUserId());
     const json = await qboRequest(`/companyinfo/${token.realmId}`);
     return json.CompanyInfo;
 }
 
-export async function getConnectionStatus(): Promise<{
+export async function getConnectionStatus(userId: string): Promise<{
     connected: boolean;
-    /** A token exists but its refresh token has expired: an admin must reconnect. */
+    /** A token exists but its refresh token has expired: the user must sign in with QuickBooks again. */
     needsReauth: boolean;
     realmId?: string;
     accessTokenExpiresAt?: Date;
@@ -179,8 +168,8 @@ export async function getConnectionStatus(): Promise<{
     companyName?: string;
     verifyError?: string;
 }> {
-    const row = await qboTokenModel.get();
-    if (!row) return { connected: false, needsReauth: false };
+    const row = await qboTokenModel.get(userId);
+    if (!row) return { connected: false, needsReauth: true };
     const connected = row.refreshTokenExpiresAt > new Date();
     return {
         connected,
@@ -195,7 +184,8 @@ export async function getConnectionStatus(): Promise<{
 
 /* ───────────────────────── Estimates ───────────────────────── */
 
-let estimateCache: { at: number; data: EstimateDto[] | null } = { at: 0, data: null };
+// Cached per user: what a user may see in QuickBooks depends on their own permissions.
+const estimateCache = new Map<string, { at: number; data: EstimateDto[] }>();
 
 // Estimates the Sales picker can show. Rejected is excluded. Closed (already converted to an
 // invoice) is included so payments can still be submitted after invoicing. Limited to recent
@@ -272,10 +262,11 @@ export async function attachPortalTotals<T extends EstimateDto>(estimates: T[]) 
 
 /** All recent estimates (any status), cached for a minute. Used by the Estimates and Customers modules. */
 export async function loadAllEstimates(forceRefresh = false) {
-    const fresh = Date.now() - estimateCache.at < ESTIMATE_CACHE_TTL_MS;
-    if (!forceRefresh && fresh && estimateCache.data) return estimateCache.data;
+    const userId = currentQboUserId();
+    const cached = estimateCache.get(userId);
+    if (!forceRefresh && cached && Date.now() - cached.at < ESTIMATE_CACHE_TTL_MS) return cached.data;
     const data = (await fetchRecentEstimates()).map(toEstimateDto);
-    estimateCache = { at: Date.now(), data };
+    estimateCache.set(userId, { at: Date.now(), data });
     return data;
 }
 
@@ -392,7 +383,7 @@ export interface CustomerDto {
     updatedAt: string | null;
 }
 
-let customerCache: { at: number; data: CustomerDto[] | null } = { at: 0, data: null };
+const customerCache = new Map<string, { at: number; data: CustomerDto[] }>();
 
 function toCustomerDto(c: QboJson): CustomerDto {
     return {
@@ -409,8 +400,9 @@ function toCustomerDto(c: QboJson): CustomerDto {
 
 /** Every customer, active and inactive, cached for a minute. */
 export async function loadCustomers(forceRefresh = false): Promise<CustomerDto[]> {
-    const fresh = Date.now() - customerCache.at < ESTIMATE_CACHE_TTL_MS;
-    if (!forceRefresh && fresh && customerCache.data) return customerCache.data;
+    const userId = currentQboUserId();
+    const cached = customerCache.get(userId);
+    if (!forceRefresh && cached && Date.now() - cached.at < ESTIMATE_CACHE_TTL_MS) return cached.data;
 
     const pageSize = 1000;
     let start = 1;
@@ -425,7 +417,7 @@ export async function loadCustomers(forceRefresh = false): Promise<CustomerDto[]
         start += pageSize;
     }
     const data = all.map(toCustomerDto);
-    customerCache = { at: Date.now(), data };
+    customerCache.set(userId, { at: Date.now(), data });
     return data;
 }
 

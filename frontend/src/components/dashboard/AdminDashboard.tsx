@@ -16,7 +16,7 @@ import { Row, Section, SectionEmpty } from './Section';
 /** Admin home: what is waiting for a decision, how healthy the QuickBooks link is, and what was decided lately. */
 export function AdminDashboard() {
   const queue = usePendingPayments(60_000);
-  const reviewed = usePaymentsList({ status: 'approved,rejected', sort: 'createdAt:desc', page: 1, pageSize: 5 });
+  const reviewed = usePaymentsList({ status: 'approved,rejected,voided', sort: 'createdAt:desc', page: 1, pageSize: 5 });
   const qbo = useQboStatus();
   const customers = useCustomers({ status: 'active', page: 1, pageSize: 1 }); // only the counts are used
   const estimates = useEstimates({ page: 1, pageSize: 1 });
@@ -91,7 +91,7 @@ export function AdminDashboard() {
                   </>
                 }
                 amount={peso(p.finalAmount ?? p.amountSubmitted)}
-                badge={<StatusBadge status={p.status === 'rejected' ? 'rejected' : 'approved'} />}
+                badge={<StatusBadge status={p.status} />}
               />
             ))}
           </Section>

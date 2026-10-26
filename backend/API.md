@@ -49,12 +49,12 @@ Every error uses one shape:
 |---|---|
 | 200 / 201 | Success / payment created |
 | 400 | Malformed input, bad id, bad upload, invalid OAuth state |
-| 401 | Not logged in, wrong credentials, or QBO connection expired |
-| 403 | Wrong role, deactivated account, must change password, not your receipt |
+| 401 | Not signed in, or your QuickBooks connection expired (`QBO_REAUTH_REQUIRED`) |
+| 403 | Wrong role, not your receipt |
 | 404 | Payment / receipt / estimate / route not found |
 | 409 | Conflict: duplicate payment, already processed, QBO not connected |
 | 422 | Business-rule violation (amounts, invalid receiver, rejected estimate) |
-| 429 | Login rate limit exceeded |
+| 429 | Sign-in rate limit exceeded |
 | 502 | QuickBooks or receipt storage upstream failure |
 
 ### Money and dates
@@ -71,15 +71,19 @@ JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP 
 
 ## 2. Authentication & sessions
 
-- Email + password login creates a signed **cookie session** `pp_session` (`httpOnly`, `sameSite=lax`, `secure` in production, **8 h** lifetime).
+- **Sign in with QuickBooks** (Intuit OpenID Connect) is the only way in; there are no passwords. A successful sign-in creates a signed **cookie session** `pp_session` (`httpOnly`, `sameSite=lax`, `secure` in production, **8 h** lifetime).
 - Browser clients must send credentials (`fetch(..., { credentials: 'include' })`) or use the Vite proxy so the cookie is same-origin. No CORS middleware is installed.
 - There is **no CSRF token**; protection relies on `sameSite=lax` and JSON/multipart bodies. Keep that in mind if cross-site embedding is ever introduced.
 - On every protected request the user is **re-read from the database**, so deactivation and role changes take effect immediately (a deactivated user's session is cleared).
-- Roles: `sales`, `admin`. Roles are **strict, not hierarchical** — an admin cannot call sales-only routes and vice versa.
-- New accounts have `mustChangePassword = true`. Until the password is changed, every role-guarded route returns `403` with `details.code = "MUST_CHANGE_PASSWORD"`. Only `/auth/me`, `/auth/logout`, `/auth/login` and `/auth/change-password` remain usable.
-- Rate limit: `/api/auth/login` — **20 requests / 15 min** per IP (`429` afterwards).
+- Roles: `sales`, `admin`, `superadmin`. Roles are **strict, not hierarchical** — each route lists who may call it. SuperAdmin manages accounts, sees reports and can read everything admins can read (all payments, receipts, customers, estimates), but does not submit or approve payments.
+- **People join by invite link, not by email.** The production Intuit app only returns the verified Intuit id (`sub`), so accounts are linked to that id. A SuperAdmin adds `{name, email, role}` (`POST /api/users`; the email is only a label) and gets a one-time link `{FRONTEND_URL}/invite#<token>` (valid 7 days; the token is in the URL fragment so it never reaches server logs, and only its SHA-256 is stored). The person opens it (`POST /api/auth/invite`), signs in with QuickBooks, and their Intuit id is linked to the account. After that a plain sign-in works. An Intuit id nobody invited is refused. `POST /api/users/:id/invite` issues a replacement link (lost/expired, or a different Intuit login).
+- **One company.** Only sign-ins from the QuickBooks company `QBO_REALM_ID` are accepted.
+- **First SuperAdmin.** Leave `SUPERADMIN_QBO_SUB` empty, attempt one sign-in (it is refused and the log prints `unknown Intuit id <sub>`), put that value in `SUPERADMIN_QBO_SUB` and restart. That Intuit login always signs in as SuperAdmin (creating or repairing the account labelled `SUPERADMIN_EMAIL`), which also recovers a lockout.
+- **Per-user QuickBooks tokens.** Every user's own QuickBooks tokens are stored (`qbo_tokens`, keyed by user) and every QuickBooks call runs as the signed-in user, so QuickBooks' own permissions and audit trail apply. Estimate and customer caches are per user. Tokens are deleted on logout and on deactivation.
+- When a user's QuickBooks connection can no longer be renewed, QuickBooks routes return `401` with `details.code = "QBO_REAUTH_REQUIRED"`; the client must send the user through sign-in again.
+- Rate limit: `/api/auth/qbo/login` — **30 requests / 15 min** per IP (`429` afterwards).
 
-Guards used below: **Public** (no auth), **Auth** (any logged-in user), **Sales**, **Admin**, **Sales|Admin**.
+Guards used below: **Public** (no auth), **Auth** (any signed-in user), **Sales**, **Admin**, **SuperAdmin**, **Sales|Admin** (a combination; most read routes also admit SuperAdmin).
 
 ---
 
@@ -88,13 +92,16 @@ Guards used below: **Public** (no auth), **Auth** (any logged-in user), **Sales*
 | Method | Path | Guard | Purpose |
 |---|---|---|---|
 | GET | `/api/health` | Public | Liveness check |
-| POST | `/api/auth/login` | Public | Log in |
-| POST | `/api/auth/logout` | Public | Log out |
+| GET | `/api/auth/qbo/login` | Public | Start "Sign in with QuickBooks" (redirect) |
+| GET | `/api/auth/qbo/callback` | Public | Intuit redirects here; creates the session (redirect) |
+| POST | `/api/auth/logout` | Public | Sign out (also deletes the user's QuickBooks tokens) |
 | GET | `/api/auth/me` | Public | Current user or `null` |
-| POST | `/api/auth/change-password` | Auth | Change own password |
-| GET | `/api/auth/qbo` | Admin | Start QBO OAuth (redirect) |
-| GET | `/api/auth/qbo/callback` | Admin | QBO OAuth callback (redirect) |
-| GET | `/api/auth/qbo/status` | Admin | QBO connection status |
+| GET | `/api/auth/qbo/status` | Auth | The signed-in user's own QuickBooks connection |
+| GET | `/api/users` | SuperAdmin | List accounts |
+| POST | `/api/users` | SuperAdmin | Add a person; returns their one-time invite link |
+| POST | `/api/users/:id/invite` | SuperAdmin | New invite link (replaces the old one) |
+| POST | `/api/auth/invite` | Public | Check an invite link and remember it for the next sign-in |
+| PATCH | `/api/users/:id` | SuperAdmin | Change name, role or active |
 | GET | `/api/qbo/estimates` | Sales\|Admin | Search QBO estimates (`q`, `limit`) |
 | GET | `/api/config/banks` | Sales\|Admin | Modes of payment + default fee % |
 | GET | `/api/customers` | Sales\|Admin | QuickBooks customers with open estimates, balance, last payment (filtered, sorted, paged) |
@@ -114,7 +121,9 @@ Guards used below: **Public** (no auth), **Auth** (any logged-in user), **Sales*
 | POST | `/api/payments/approve/:id` | Admin | Approve and post to QBO |
 | POST | `/api/payments/reject/:id` | Admin | Reject |
 | POST | `/api/payments/reject/:id/undo` | Admin | Undo a rejection (30 s window) |
-| GET | `/api/payments/qbo-accounts` | Admin | List QBO accounts (setup helper) |
+| POST | `/api/payments/void/:id` | Admin | Reverse an approved payment in QBO |
+| GET | `/api/estimates/:id/invoices` | Sales\|Admin | The estimate's QBO invoices: balance and paid |
+| GET | `/api/payments/qbo-accounts` | Admin\|SuperAdmin | List QBO accounts (setup helper) |
 
 ---
 
@@ -127,67 +136,39 @@ Guards used below: **Public** (no auth), **Auth** (any logged-in user), **Sales*
 
 ## 5. Auth endpoints
 
-### `POST /api/auth/login`
-Body:
-```json
-{ "email": "jane@company.com", "password": "secret" }
-```
-`email` is trimmed and lower-cased. `password` 1–200 chars.
-
-**200**
-```json
-{ "user": { "id": "uuid", "name": "Jane", "email": "jane@company.com", "role": "sales", "mustChangePassword": false } }
-```
-Sets the `pp_session` cookie.
-
-| Status | When |
-|---|---|
-| 400 | Missing/invalid email or password |
-| 401 | Wrong email or password (same message either way; timing-equalised) |
-| 403 | Account deactivated |
-| 429 | Rate limit exceeded |
-
-If `mustChangePassword` is `true`, the frontend should route straight to the change-password screen.
-
 ### `POST /api/auth/logout`
-**200** `{ "ok": true }`. Clears the session. Always succeeds.
+**200** `{ "ok": true }`. Clears the session and deletes the user's stored QuickBooks tokens. Always succeeds.
 
 ### `GET /api/auth/me`
-**200** `{ "user": { ...same shape as login } }` or `{ "user": null }` when not logged in or deactivated. Use at app start to restore the session.
-
-### `POST /api/auth/change-password`  — Auth
-Body:
-```json
-{ "currentPassword": "old", "newPassword": "at-least-8-chars" }
-```
-`newPassword` is 8–200 chars. **200** `{ "ok": true }`.
-
-| Status | When |
-|---|---|
-| 400 | Validation failure |
-| 401 | Not logged in |
-| 422 | Current password wrong, or new equals current |
-
-> The server clears `mustChangePassword` via `userModel.updatePassword`; re-call `/auth/me` afterwards to refresh the flag.
+**200** `{ "user": { "id": "uuid", "name": "Jane", "email": "jane@company.com", "role": "sales" } }` or `{ "user": null }` when not logged in or deactivated. Use at app start to restore the session.
 
 ---
 
-## 6. QuickBooks connection (admin)
+## 6. QuickBooks sign-in and connection
 
-QBO tokens are stored in the single-row `qbo_tokens` table and refreshed automatically (5-minute buffer; concurrent refreshes are de-duplicated).
+Each user's QBO tokens are stored in `qbo_tokens` (one row per user) and refreshed automatically (5-minute buffer; concurrent refreshes are de-duplicated per user). If Intuit rejects a refresh with `invalid_grant`, the row is deleted.
 
-### `GET /api/auth/qbo`
-Generates a random `state`, stores it in the session, and **302-redirects** to Intuit's authorize URL (scope: Accounting). Navigate the browser here; do not call with `fetch`.
+### `GET /api/auth/qbo/login`
+Optional query `next=/some/path` (same-site paths only) is where to land after sign-in. Generates a random `state`, stores it in the session, and **302-redirects** to Intuit's authorize URL (scopes: `openid` and Accounting). Navigate the browser here; do not call with `fetch`.
 
 ### `GET /api/auth/qbo/callback`
-Intuit redirects here (must match `QBO_REDIRECT_URI`). Validates `state` (constant-time compare), exchanges the code, stores tokens, then **302-redirects** to the frontend:
+Intuit redirects here (must match `QBO_REDIRECT_URI`). Validates `state` (constant-time compare), validates `code`/`state`/`realmId` (fixed shapes only; the raw query string is never passed to the OAuth library), exchanges the code, checks the company from the **signed ID token** (`realmid` must equal `QBO_REALM_ID`; the `realmId` in the URL is only an early exit because the browser can edit it), reads who signed in (`sub`) from the verified Intuit ID token, applies the invite link opened in this browser (if any), stores that user's tokens and starts the session. Always **302-redirects** to the frontend:
 
-- success → `{FRONTEND_URL}/settings/integrations?qbo=connected`
-- Intuit error → `{FRONTEND_URL}/settings/integrations?qbo=error&reason=<error>`
-- invalid/missing state → **400** JSON error (`Invalid OAuth state…`)
+- success → `{FRONTEND_URL}{next}` (default `/`)
+- failure → `{FRONTEND_URL}/login?error=<code>`
+
+| `error` | Meaning |
+|---|---|
+| `access_denied` | The person cancelled at Intuit |
+| `not_authorized` | This Intuit login was never invited (the log prints its id) |
+| `invite_invalid` | The invite link is unknown, expired or already used |
+| `already_linked` | The invite was opened with an Intuit login that already belongs to another account |
+| `deactivated` | The account was deactivated |
+| `wrong_company` | Signed in from a different QuickBooks company |
+| `sign_in_failed` | Anything else (bad state, Intuit error) |
 
 ### `GET /api/auth/qbo/status`
-Query: `verify=true` (optional) also calls QBO `CompanyInfo`.
+The signed-in user's own connection. Query: `verify=true` (optional) also calls QBO `CompanyInfo`.
 
 **200**
 ```json
@@ -414,6 +395,10 @@ Estimates dated within `ESTIMATE_LOOKBACK_DAYS`, **any status** (the picker endp
 ### `GET /api/estimates/:id` — Sales|Admin
 **200** `{ estimate }`: the list fields plus `lines` (`description, quantity, amount`), `memo` and `linkedInvoiceIds`. Works for estimates outside the lookback window. **404** if QuickBooks has no such estimate.
 
+### `GET /api/estimates/:id/invoices` — Sales|Admin
+What QuickBooks says about the invoices created from the estimate (read live, not cached).
+**200** `{ "invoices": [{ "id", "docNumber", "txnDate", "dueDate", "total", "balance" }], "total", "balance", "paid" }`. `invoices` is empty (and the totals 0) until someone creates the invoice in QuickBooks. `paid` is `total - balance`, so it includes payments recorded directly in QuickBooks. **404** if QuickBooks has no such estimate; **502** if QuickBooks cannot be reached. The UI treats the answer as extra information: it warns on submit/approve when there is no invoice, the invoice is already paid, or the amount is above the balance.
+
 ---
 
 ## 9. Payments — Admin
@@ -463,6 +448,8 @@ Body (JSON):
 ```
 `finalAmount` is the net amount after any bank/QR fee: must be `> 0` and `≤ amountSubmitted`. The difference is posted to QBO as a fee (`QBO_BANK_FEE_ACCOUNT_ID`); the payment is deposited to the account mapped from the bank (`QBO_DEPOSIT_ACCOUNT_*`).
 
+**Dated by when the money arrived:** the QBO Payment and Deposit use the payment's `receivedOn` as their transaction date (not the approval date). Older rows without `receivedOn` fall back to today in `Asia/Manila`.
+
 **Retry-safe:** if a previous attempt already created the QBO payment (`qboPaymentId` set), the stored `finalAmount` is reused and the body value is ignored.
 
 **200**
@@ -495,7 +482,21 @@ Body: `{ "reason": "Amount does not match the bank statement" }` (3–300 chars)
 
 The status flip is atomic (`pending` → `rejected` only), so double-rejects are safe.
 
-### `GET /api/payments/qbo-accounts` — Admin
+### `POST /api/payments/void/:id` — Admin
+Reverses an **approved** payment in QuickBooks. Body: `{ "reason": "Wrong estimate" }` (3–300 chars).
+Steps, each safe to repeat: delete the QBO Deposit (fee case only), then void the QBO Payment (`POST /payment?operation=update&include=void`), which puts the balance back on the invoice and leaves a zeroed record marked "Voided". Then the row becomes `voided` with `voided_at`, `voided_by` and `void_reason`, and the rep sees the change as unread.
+**200** `{ "ok": true }`.
+
+| Status | When |
+|---|---|
+| 400 | Bad id or reason |
+| 404 | Payment not found |
+| 409 | Not `approved` (only approved payments can be voided), or already being processed |
+| 502 | QuickBooks refused (for example the period is closed or the deposit was reconciled); nothing is changed in the portal, so it can be retried |
+
+A voided payment stops counting toward the estimate's progress and the customer's paid-to-date, and its bank reference number can be submitted again. **Not yet tested against a live QuickBooks company**: try it on the sandbox first.
+
+### `GET /api/payments/qbo-accounts` — Admin or SuperAdmin
 Setup helper for filling the `QBO_*_ACCOUNT*` env vars. Returns active accounts of type Bank, Expense, Other Expense, Other Current Asset, sorted by type then name.
 
 **200** `{ "accounts": [{ "id": "35", "name": "BDO Savings", "type": "Bank", "subType": "Savings" }] }`
@@ -508,12 +509,13 @@ Machine-readable values in `error.details.code`:
 
 | Code | Status | Meaning | Suggested UI |
 |---|---|---|---|
-| `MUST_CHANGE_PASSWORD` | 403 | First-login / reset password pending | Redirect to change-password |
 | `INVALID_RECEIVER` | 422 | Chosen receiver not an active sales user | Refresh receivers list |
 | `DUPLICATE_REFERENCE` | 409 | Bank reference already used | Block; tell user |
 | `DUPLICATE_PENDING` | 409 | Similar pending payment in last 24 h | Confirm, then resubmit with `force=true` |
-| `QBO_NOT_CONNECTED` | 409 | No QBO tokens stored | Admin: go to setup |
-| `QBO_REAUTH_REQUIRED` | 401 | Refresh token expired/revoked | Admin: reconnect QBO |
+| `QBO_REAUTH_REQUIRED` | 401 | No QuickBooks connection for this user, or its refresh token expired/revoked | Send the user to `/api/auth/qbo/login` |
+| `INVITE_INVALID` | 404 | Invite link unknown, expired, used, or for a deactivated account | Ask the SuperAdmin for a new link |
+| `SELF_LOCKOUT` | 409 | A SuperAdmin tried to demote/deactivate themselves | Tell the user |
+| `LAST_SUPERADMIN` | 409 | Would leave no active SuperAdmin | Tell the user |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Idempotency-Key already used for a different payment | Generate a new key |
 | `UNDO_NOT_AVAILABLE` | 409 | Window passed, not your rejection, or already posted | Tell the admin |
 
@@ -525,20 +527,21 @@ Other failures have no code; switch on HTTP status and show `message`.
 
 PostgreSQL via Prisma (`prisma/schema.prisma`). Columns are snake_case in the DB.
 
-**`users`** — `id` UUID PK, `name`, `email` (unique), `password_hash`, `role` (`sales`|`admin`), `active` (default true), `must_change_password` (default true), timestamps.
+**`users`** — `id` UUID PK, `name`, `email` (unique), `role` (`sales`|`admin`|`superadmin`), `active` (default true), `qbo_sub` (unique; Intuit account id, set when an invite is accepted), `invite_token_hash` (unique, SHA-256 of the one-time link token) and `invite_expires_at`, timestamps. `email` is a label and is not used to match logins. Legacy columns `password_hash` (nullable) and `must_change_password` are no longer used.
 
-**`payments`** — `id` UUID PK, `customer_name`, `qbo_customer_id`, `qbo_estimate_id`, `qbo_estimate_number`, `amount_submitted` Decimal(14,2), `final_amount` Decimal(14,2)?, `bank_deposited_to` enum (`BDO`, `UnionBank`, `Digima`, `Happy Med`, `Cash`), `reference_no`?, `received_on` DATE?, `received_by` (name snapshot), `received_by_id` → users, `submitted_by` (name snapshot), `submitted_by_id` → users, `proof_image_url`, `proof_public_id`, `status` (`pending`|`approved`|`rejected`), `qbo_payment_id` (**unique**, prevents double-posting), `qbo_deposit_id`, `approved_by`, `approved_at`, `rejection_reason`, `sales_seen_at`, `reviewed_by_id` → users (who approved/rejected; set from migration `20261016030000` on), `idempotency_key` (unique per submitter), `created_at`, `updated_at`.
+**`payments`** — `id` UUID PK, `customer_name`, `qbo_customer_id`, `qbo_estimate_id`, `qbo_estimate_number`, `amount_submitted` Decimal(14,2), `final_amount` Decimal(14,2)?, `bank_deposited_to` enum (`BDO`, `UnionBank`, `Digima`, `Happy Med`, `Cash`), `reference_no`?, `received_on` DATE?, `received_by` (name snapshot), `received_by_id` → users, `submitted_by` (name snapshot), `submitted_by_id` → users, `proof_image_url`, `proof_public_id`, `status` (`pending`|`approved`|`rejected`|`voided`), `voided_at`, `voided_by`, `void_reason`, `qbo_payment_id` (**unique**, prevents double-posting), `qbo_deposit_id`, `approved_by`, `approved_at`, `rejection_reason`, `sales_seen_at`, `reviewed_by_id` → users (who approved/rejected; set from migration `20261016030000` on), `idempotency_key` (unique per submitter), `created_at`, `updated_at`.
 Indexes: `(submitted_by_id, status)`, `(received_by_id)`, `(status, created_at)`, `(qbo_estimate_id)`, `(bank_deposited_to, reference_no)`.
 
-**`qbo_tokens`** — single row (`id = 1`): `realm_id`, access/refresh tokens and their expiry timestamps, `last_verified_at`. Tokens are stored in plaintext; restrict DB access accordingly.
+**`qbo_tokens`** — one row per user (`user_id` PK → users, cascade delete; tokens are AES-256-GCM encrypted when `TOKEN_ENCRYPTION_KEY` is set): `realm_id`, access/refresh tokens and their expiry timestamps, `last_verified_at`. Restrict database access either way.
 
 ### Payment lifecycle
 
 ```
 submit ──► pending ──approve (posts to QBO)──► approved
                   └──reject──────────────────► rejected
+approved ──void (reverses in QBO)──► voided
 ```
-`approved` and `rejected` are terminal. A partially failed approval leaves the row `pending` with `qboPaymentId` set.
+`rejected` and `voided` are terminal. A partially failed approval leaves the row `pending` with `qboPaymentId` set.
 
 ---
 
@@ -558,6 +561,10 @@ Environment variables are validated at boot (the process exits on failure). See 
 | `QBO_CLIENT_ID` / `QBO_CLIENT_SECRET` | yes | Intuit app keys |
 | `QBO_ENVIRONMENT` | no | `sandbox` (default) / `production` |
 | `QBO_REDIRECT_URI` | yes | Must match the Intuit app, e.g. `…/api/auth/qbo/callback` |
+| `QBO_REALM_ID` | yes | The one QuickBooks company this portal serves; other companies are refused at sign-in |
+| `TOKEN_ENCRYPTION_KEY` | recommended | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts the stored QuickBooks tokens (AES-256-GCM). Tokens saved before it was set stay readable and are encrypted the next time they are saved. Changing or losing it sends everyone back through sign-in. |
+| `SUPERADMIN_QBO_SUB` | no | The operator's Intuit id; always signs in as SuperAdmin (first-account bootstrap and lockout recovery) |
+| `SUPERADMIN_EMAIL` | with `SUPERADMIN_QBO_SUB` | Label of that SuperAdmin account |
 | `QBO_DEPOSIT_ACCOUNT_BDO` / `_UNIONBANK` / `_DIGIMA` / `_HAPPYMED` / `_CASH` | for approval | QBO "Deposit To" account ids (use `/payments/qbo-accounts`) |
 | `QBO_BANK_FEE_ACCOUNT_ID` | for fees | Expense account for bank/QR fees |
 | `SESSION_SECRET` | yes | ≥ 16 chars |
@@ -577,18 +584,18 @@ npm run build && npm start # compile to dist/ and run
 npm run typecheck
 npm test                   # unit tests for validators, query building and serializers (no database needed)
 
-# Create the first accounts (no signup endpoint exists)
-npm run user:create -- admin "Full Name" admin@company.com "temporary-password"
-npm run user:create -- sales "Full Name" rep@company.com "temporary-password"
+# Add an account from the shell and print its one-time invite link (SuperAdmins can also do this through POST /api/users)
+npm run user:create -- admin "Full Name" admin@company.com
+npm run user:create -- sales "Full Name" rep@company.com
 ```
 
 - Graceful shutdown on `SIGINT`/`SIGTERM` (closes the HTTP server, disconnects Prisma).
 - Behind a proxy in production (`trust proxy` = 1) so secure cookies work.
-- First-time setup: create an admin → log in → change password → connect QBO (`/api/auth/qbo`) → use `/payments/qbo-accounts` to fill the account env vars.
+- First-time setup: set `QBO_REALM_ID`, enable the OpenID scope (Email/Profile are not needed) and the redirect URI on the Intuit app → bootstrap the first SuperAdmin with `SUPERADMIN_QBO_SUB` (see Authentication) → the SuperAdmin adds the team and shares each person's invite link (`POST /api/users`) → an admin or the SuperAdmin uses `/payments/qbo-accounts` to fill the account env vars.
 
 ### Known gaps (worth tracking)
 
-- No user-management endpoints (create/deactivate/reset password is CLI/DB only).
+- Set `TOKEN_ENCRYPTION_KEY`: without it the QuickBooks tokens in `qbo_tokens` are stored in plaintext.
 - `/payments/pending` is still unpaginated (fine for a review queue; history is paged via `GET /payments`). Paging is offset-based.
 - The audit trail is rebuilt from the payment row; a dedicated audit table would also capture partial-post attempts.
 - No OpenAPI document or request id in errors; no automated tests in the repo.

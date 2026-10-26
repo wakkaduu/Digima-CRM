@@ -29,6 +29,7 @@ const DEFAULTS = { tab: 'pending', q: '', rep: '', bank: '', outcome: '', page: 
 const OUTCOMES = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
+  { value: 'voided', label: 'Voided' },
 ];
 
 const estimateOf = (p: PendingPayment) => p.qboEstimateNumber || p.qboEstimateId;
@@ -84,7 +85,7 @@ export default function AdminPendingPage() {
   // History: server-side search, filter and paging (the API never sends the whole archive).
   const historySearch = useDebounced(query.trim());
   const historyQuery = usePaymentsList(
-    { status: outcome || 'approved,rejected', q: historySearch, rep, bank, sort: 'createdAt:desc', page, pageSize },
+    { status: outcome || 'approved,rejected,voided', q: historySearch, rep, bank, sort: 'createdAt:desc', page, pageSize },
     tab === 'history',
   );
   const historyRows: HistoryPayment[] = historyQuery.data?.items ?? [];
@@ -118,7 +119,7 @@ export default function AdminPendingPage() {
   const filters = [
     { id: 'rep', label: 'Sales rep', allLabel: 'All reps', value: rep, options: reps },
     { id: 'bank', label: 'Bank', allLabel: 'All banks', value: bank, options: banks.map((b) => ({ value: b, label: bankLabel(b) })) },
-    ...(tab === 'history' ? [{ id: 'outcome', label: 'Outcome', allLabel: 'Approved and rejected', value: outcome, options: OUTCOMES }] : []),
+    ...(tab === 'history' ? [{ id: 'outcome', label: 'Outcome', allLabel: 'All outcomes', value: outcome, options: OUTCOMES }] : []),
   ];
 
   return (

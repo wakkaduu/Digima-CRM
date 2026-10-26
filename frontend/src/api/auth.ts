@@ -16,6 +16,10 @@ export function useMe() {
 
 export const homePath = (_user: User) => '/dashboard';
 
+/** Where the browser goes to sign in with QuickBooks (a real navigation: the backend redirects to Intuit and back). */
+export const signInUrl = (next?: string | null) =>
+  next && safeNext(next) ? `/api/auth/qbo/login?next=${encodeURIComponent(next)}` : '/api/auth/qbo/login';
+
 /** Only same-site paths are allowed as a post-login destination (no open redirects). */
 export const safeNext = (next: string | null) =>
   next && next.startsWith('/') && !next.startsWith('//') ? next : null;

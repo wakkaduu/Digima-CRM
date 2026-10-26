@@ -3,10 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { api, ApiError } from '../../api/client';
+import { useInvoiceSummary } from '../../api/crm';
 import { PAYMENTS_KEY, useBankConfig } from '../../api/payments';
 import { QBO_REAUTH_KEY } from '../../api/qbo';
 import type { ApproveResult, PendingPayment } from '../../api/types';
 import { bankLabel, dayLabel, peso, when } from '../../lib/format';
+import { checkAgainstInvoices } from '../../lib/invoice';
 import { breakdown, netAfterFee, waiting } from '../../lib/review';
 import { cn } from '../../lib/cn';
 import { Field } from '../Field';
@@ -50,6 +52,9 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
   const [dialog, setDialog] = useState<'approve' | 'reject' | null>(null);
   const amounts = breakdown(p.amountSubmitted, finalAmount);
   const wait = waiting(p.createdAt);
+  // What QuickBooks says is owed: approval stops without an invoice, and anything over the balance becomes unapplied credit.
+  const invoices = useInvoiceSummary(p.qboEstimateId, !p.qboPartiallyPosted);
+  const invoiceCheck = p.qboPartiallyPosted ? null : checkAgainstInvoices(invoices.data, Number(p.amountSubmitted));
 
   const afterDecision = () => {
     setDialog(null);
@@ -171,6 +176,24 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
           </Message>
         )}
 
+        {invoiceCheck?.kind === 'none' && (
+          <Message type="warning" className="mb-0">
+            QuickBooks has no invoice for this estimate yet. Create it in QuickBooks (open the estimate, choose Create invoice) before
+            you approve, or approval will stop.
+          </Message>
+        )}
+        {invoiceCheck?.kind === 'paid' && (
+          <Message type="warning" className="mb-0">
+            The invoice for this estimate is already fully paid in QuickBooks. Approving would only add unapplied credit.
+          </Message>
+        )}
+        {invoiceCheck?.kind === 'over' && (
+          <Message type="warning" className="mb-0">
+            This is more than the {peso(invoiceCheck.room)} still owed on the invoice. The extra {peso(Number(p.amountSubmitted) - invoiceCheck.room)}{' '}
+            would stay in QuickBooks as unapplied credit.
+          </Message>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-[1fr_minmax(0,22rem)]">
           <ReceiptViewer src={p.proofImageUrl} thumbSrc={p.thumbUrl} alt={`Receipt from ${p.customerName}`} />
 
@@ -184,6 +207,12 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
               <dd>{p.receivedOn ? dayLabel(p.receivedOn) : '—'}</dd>
               <dt>Received by</dt>
               <dd>{p.receivedBy || '—'}</dd>
+              {invoices.data && invoices.data.invoices.length > 0 && (
+                <>
+                  <dt>Invoice balance</dt>
+                  <dd className="tabular-nums">{peso(invoices.data.balance)}</dd>
+                </>
+              )}
               <dt>Status</dt>
               <dd>{p.qboPartiallyPosted ? <StatusBadge status="partial" /> : <StatusBadge status="pending" />}</dd>
             </dl>

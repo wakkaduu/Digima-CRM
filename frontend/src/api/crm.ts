@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api } from './client';
-import type { CustomerDetail, CustomerRow, EstimateDetail, EstimateRow, LinkedPayment, PagedResult } from './types';
+import type { CustomerDetail, CustomerRow, EstimateDetail, EstimateRow, InvoiceSummary, LinkedPayment, PagedResult } from './types';
 
 export const CRM_KEY = ['crm'] as const;
 
@@ -53,6 +53,16 @@ export const useEstimate = (id: string | undefined) =>
     queryKey: [...CRM_KEY, 'estimate', id],
     enabled: !!id,
     queryFn: async () => (await api<{ estimate: EstimateDetail }>(`/api/estimates/${id}`)).estimate,
+  });
+
+/** The QuickBooks invoices made from an estimate (balance and paid, straight from QuickBooks). */
+export const useInvoiceSummary = (estimateId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: [...CRM_KEY, 'invoices', estimateId],
+    enabled: enabled && !!estimateId,
+    retry: false, // extra information: if QuickBooks does not answer, the page works without it
+    staleTime: 30_000,
+    queryFn: () => api<InvoiceSummary>(`/api/estimates/${estimateId}/invoices`),
   });
 
 /* ── Payments linked to a customer or an estimate ── */

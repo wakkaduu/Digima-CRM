@@ -1,5 +1,6 @@
 import { useMe } from '../api/auth';
 import { AdminDashboard } from '../components/dashboard/AdminDashboard';
+import { ExecutiveDashboard } from '../components/dashboard/ExecutiveDashboard';
 import { SalesDashboard } from '../components/dashboard/SalesDashboard';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -12,7 +13,7 @@ export function greeting(now = new Date()) {
 
 const today = () => new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' });
 
-/** Role-based home: sales see their payments and next steps, admins see the review queue and QuickBooks health. */
+/** Role-based home: sales see their payments and next steps, admins see the review queue and QuickBooks health, SuperAdmins an overview. */
 export default function DashboardPage() {
   useDocumentTitle('Dashboard');
   const { data: me } = useMe();
@@ -25,7 +26,7 @@ export default function DashboardPage() {
         title={`${greeting()}, ${first}`}
         description={today()}
       />
-      {me.role === 'admin' ? <AdminDashboard /> : <SalesDashboard />}
+      {me.role === 'admin' ? <AdminDashboard /> : me.role === 'superadmin' ? <ExecutiveDashboard /> : <SalesDashboard />}
     </div>
   );
 }

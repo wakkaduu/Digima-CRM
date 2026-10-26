@@ -19,11 +19,11 @@ export async function loadUser(req: Request): Promise<User | null> {
     return user;
 }
 
-// Any logged-in user (used for changing your own password).
+// Any signed-in user (their own QuickBooks connection status, for example).
 export const requireAuth: RequestHandler = async (req, res, next) => {
     try {
         const user = await loadUser(req);
-        if (!user) return next(new HttpError(401, 'Please log in first'));
+        if (!user) return next(new HttpError(401, 'Please sign in first'));
         req.user = user;
         next();
     } catch (err) {
@@ -31,15 +31,12 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     }
 };
 
-// Strict roles: a route lists exactly who may use it. Admin is NOT a superset of sales
-// (admins approve payments; only sales submit them).
+// Strict roles: a route lists exactly who may use it (see config/roles.ts). Admin is NOT a superset of sales
+// (admins approve payments; only sales submit them), and SuperAdmin does neither.
 export const requireRole = (...roles: string[]): RequestHandler => async (req, res, next) => {
     try {
         const user = await loadUser(req);
-        if (!user) return next(new HttpError(401, 'Please log in first'));
-        if (user.mustChangePassword) {
-            return next(new HttpError(403, 'You must set a new password before continuing.', { code: 'MUST_CHANGE_PASSWORD' }));
-        }
+        if (!user) return next(new HttpError(401, 'Please sign in first'));
         if (!roles.includes(user.role)) {
             return next(new HttpError(403, 'You do not have access to this resource'));
         }

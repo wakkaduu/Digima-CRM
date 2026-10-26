@@ -19,6 +19,7 @@ enum PaymentStatus {
   pending
   approved
   rejected
+  voided // approved, then reversed in QuickBooks by an admin
 }
 
 model Payment {
@@ -46,6 +47,9 @@ model Payment {
   approvedBy      String?   @map("approved_by")
   approvedAt      DateTime? @map("approved_at")
   rejectionReason String?   @map("rejection_reason")
+  voidedAt        DateTime? @map("voided_at")
+  voidedBy        String?   @map("voided_by")
+  voidReason      String?   @map("void_reason")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // User 
@@ -70,10 +74,11 @@ model Payment {
   @@map("payments")
 }
 
-// Stores the QBO OAuth tokens so they survive server restarts.
+// Each user's own QuickBooks OAuth tokens, issued when they sign in with QuickBooks.
 // QBO access tokens last 1 hour; refresh tokens rotate, so they must be persisted.
 model QboToken {
-  id                    Int       @id @default(1) // single-row table (one QBO company)
+  userId                String    @id @map("user_id") @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   realmId               String    @map("realm_id")
   accessToken           String    @map("access_token")
   refreshToken          String    @map("refresh_token")
@@ -88,13 +93,17 @@ model QboToken {
 enum UserRole {
   sales
   admin
+  superadmin
 }
 
 model User {
   id                 String   @id @default(uuid()) @db.Uuid
   name               String
   email              String   @unique
-  passwordHash       String   @map("password_hash")
+  passwordHash       String?  @map("password_hash") // legacy: sign-in is QuickBooks SSO only
+  qboSub             String?  @unique @map("qbo_sub") // Intuit account id, linked by accepting an invite link
+  inviteTokenHash    String?  @unique @map("invite_token_hash") // SHA-256 of the one-time invite link token
+  inviteExpiresAt    DateTime? @map("invite_expires_at")
   role               UserRole
   active             Boolean  @default(true)
   mustChangePassword Boolean  @default(true) @map("must_change_password")
@@ -104,6 +113,7 @@ model User {
   submissions Payment[] @relation("PaymentSubmittedBy")
   receipts    Payment[] @relation("PaymentReceivedBy")
   reviews     Payment[] @relation("PaymentReviewedBy")
+  qboToken    QboToken?
 
   @@map("users")
 }

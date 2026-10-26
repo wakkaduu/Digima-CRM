@@ -1,13 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
-import { CheckCircle2, Clock, Link2, Link2Off, TriangleAlert, XCircle } from 'lucide-react';
+import { Ban, CheckCircle2, Clock, Link2, Link2Off, TriangleAlert, XCircle } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-export type Status = 'pending' | 'approved' | 'rejected' | 'partial' | 'connected' | 'disconnected';
+export type Status = 'pending' | 'approved' | 'rejected' | 'voided' | 'partial' | 'connected' | 'disconnected';
 
 const STATUS: Record<Status, { label: string; icon: LucideIcon; tone: string }> = {
   pending: { label: 'Pending review', icon: Clock, tone: 'bg-warning-bg border-warning text-warning' },
   approved: { label: 'Approved', icon: CheckCircle2, tone: 'bg-success-bg border-success text-success' },
   rejected: { label: 'Rejected', icon: XCircle, tone: 'bg-danger-bg border-danger text-danger' },
+  voided: { label: 'Voided', icon: Ban, tone: 'bg-surface-sunk border-border-strong text-text-muted' },
   partial: { label: 'Partially posted', icon: TriangleAlert, tone: 'bg-warning-bg border-warning text-warning' },
   connected: { label: 'Connected', icon: Link2, tone: 'bg-success-bg border-success text-success' },
   disconnected: { label: 'Not connected', icon: Link2Off, tone: 'bg-danger-bg border-danger text-danger' },

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as paymentModel from '../models/payment.model';
-import { idSchema, approveSchema, rejectSchema } from '../validators/payment.validator';
+import { idSchema, approveSchema, rejectSchema, voidSchema } from '../validators/payment.validator';
 import * as qboPayment from '../services/qboPayment.service';
 import { toListItem } from '../serializers/payment.serializer';
 import HttpError from '../utils/HttpError';
@@ -116,6 +116,32 @@ export const undoReject = asyncHandler(async (req, res) => {
         throw new HttpError(409, 'This rejection can no longer be undone.', { code: 'UNDO_NOT_AVAILABLE' });
     }
     res.json({ ok: true });
+});
+
+// POST /api/payments/void/:id   body: { reason }  -> reverse an approved payment in QuickBooks
+export const voidPayment = asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id);
+    const parsed = voidSchema.safeParse(req.body);
+    if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
+
+    if (inFlight.has(id)) throw new HttpError(409, 'This payment is already being processed.');
+    inFlight.add(id);
+
+    try {
+        const payment = await paymentModel.findById(id);
+        if (!payment) throw new HttpError(404, 'Payment not found');
+        if (payment.status !== 'approved') {
+            throw new HttpError(409, `Only an approved payment can be voided. This one is ${payment.status}.`);
+        }
+
+        await qboPayment.voidInQbo(payment);
+
+        const count = await paymentModel.voidIfApproved(id, { voidedBy: req.user.name, voidReason: parsed.data.reason });
+        if (!count) throw new HttpError(409, 'This payment was already processed.');
+        res.json({ ok: true });
+    } finally {
+        inFlight.delete(id);
+    }
 });
 
 // GET /api/payments/qbo-accounts  (helper for filling in .env)

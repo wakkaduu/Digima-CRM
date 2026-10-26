@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
 import { api, apiUpload, ApiError } from '../api/client';
 import { useMe } from '../api/auth';
-import { useEstimate } from '../api/crm';
+import { useEstimate, useInvoiceSummary } from '../api/crm';
 import { MINE_KEY, RECEIVERS_KEY, useBankConfig, useEstimateProbe, useRecentEstimates } from '../api/payments';
 import type { Estimate, Receiver } from '../api/types';
 import { EstimatePicker, remainingOf } from '../components/EstimatePicker';
@@ -19,6 +19,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { RadioCards } from '../components/ui/RadioCards';
 import { StickyActionBar } from '../components/ui/StickyActionBar';
 import { AMOUNT_RE, cleanAmount, dayLabel, formatAmountInput, peso, todayManila } from '../lib/format';
+import { checkAgainstInvoices } from '../lib/invoice';
 import { compressImage } from '../lib/image';
 import { readJson, removeKey, writeJson } from '../lib/storage';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -93,7 +94,7 @@ export function SubmitPaymentPage() {
   const receiverName = receivers.find((r) => r.id === receivedById)?.name;
   const qboDown =
     estimatesQuery.error instanceof ApiError &&
-    (estimatesQuery.error.code === 'QBO_NOT_CONNECTED' || estimatesQuery.error.code === 'QBO_REAUTH_REQUIRED');
+    estimatesQuery.error.code === 'QBO_REAUTH_REQUIRED';
   const loadError = estimatesQuery.error && !qboDown ? estimatesQuery.error.message : null;
 
   const savedBank = () => {
@@ -181,6 +182,9 @@ export function SubmitPaymentPage() {
   const amountNumber = Number(amountRaw);
   const overRemaining =
     selected && amountNumber > 0 && remainingOf(selected) > 0 && amountNumber > remainingOf(selected);
+  // What QuickBooks says is still owed on the estimate's invoice(s). Null until it answers (or if it cannot).
+  const invoices = useInvoiceSummary(selected?.id);
+  const invoiceCheck = selected ? checkAgainstInvoices(invoices.data, amountNumber, selected.pendingAmount) : null;
 
   async function onPick(f: File) {
     clearError('proof');
@@ -422,7 +426,22 @@ export function SubmitPaymentPage() {
                 />
               )}
             </Field>
-            {overRemaining && selected && (
+            {selected && invoiceCheck?.kind === 'none' && (
+              <Message type="info">
+                QuickBooks has no invoice for this estimate yet. You can still submit, but an admin has to create the invoice
+                before this payment can be approved.
+              </Message>
+            )}
+            {selected && invoiceCheck?.kind === 'paid' && (
+              <Message type="warning">The invoice for this estimate is already fully paid in QuickBooks. Check that this is the right estimate.</Message>
+            )}
+            {selected && invoiceCheck?.kind === 'over' && amountNumber > 0 && (
+              <Message type="warning">
+                This is more than the {peso(invoiceCheck.room)} the invoice can still take. The extra would be left in
+                QuickBooks as unapplied credit. Check the amount before you submit.
+              </Message>
+            )}
+            {selected && !invoiceCheck && overRemaining && (
               <Message type="warning">
                 This is more than the estimated remaining balance ({peso(remainingOf(selected))}). Check the amount before you
                 submit.

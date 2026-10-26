@@ -25,6 +25,7 @@ export function toListItem(p: Payment, role: Role) {
         bankDepositedTo: p.bankDepositedTo,
         status: p.status,
         rejectionReason: p.rejectionReason,
+        voidReason: p.voidReason,
         createdAt: p.createdAt,
         receivedOn: p.receivedOn,
         receivedBy: p.receivedBy,
@@ -45,7 +46,7 @@ export function toListItem(p: Payment, role: Role) {
 }
 
 export interface AuditEvent {
-    type: 'submitted' | 'approved' | 'rejected';
+    type: 'submitted' | 'approved' | 'rejected' | 'voided';
     at: Date;
     by: string | null;
     note?: string | null;
@@ -54,7 +55,10 @@ export interface AuditEvent {
 /** Who did what and when, reconstructed from the row (there is no separate audit table yet). */
 export function auditEvents(p: Payment): AuditEvent[] {
     const events: AuditEvent[] = [{ type: 'submitted', at: p.createdAt, by: p.submittedBy }];
-    if (p.status === 'approved' && p.approvedAt) events.push({ type: 'approved', at: p.approvedAt, by: p.approvedBy });
+    if ((p.status === 'approved' || p.status === 'voided') && p.approvedAt) {
+        events.push({ type: 'approved', at: p.approvedAt, by: p.approvedBy });
+    }
+    if (p.status === 'voided' && p.voidedAt) events.push({ type: 'voided', at: p.voidedAt, by: p.voidedBy, note: p.voidReason });
     if (p.status === 'rejected' && p.approvedAt) {
         events.push({ type: 'rejected', at: p.approvedAt, by: p.approvedBy, note: p.rejectionReason });
     }

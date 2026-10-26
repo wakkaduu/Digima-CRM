@@ -2,12 +2,11 @@ import { screen } from '@testing-library/react';
 import { QboBanner } from './QboBanner';
 import { mockApi, renderWithProviders } from '../../test/renderWithProviders';
 
-const admin = { id: '1', name: 'Ana', email: 'a@x.co', role: 'admin' as const, mustChangePassword: false };
 afterEach(() => vi.unstubAllGlobals());
 
-const banner = (status: unknown, user = admin) => {
+const banner = (status: unknown, route = '/customers') => {
   mockApi({ 'GET /api/auth/qbo/status': [200, status] });
-  renderWithProviders(<QboBanner user={user} />);
+  renderWithProviders(<QboBanner />, route);
 };
 
 describe('QboBanner', () => {
@@ -17,26 +16,17 @@ describe('QboBanner', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('warns when QuickBooks is not connected, with a link to fix it', async () => {
-    banner({ connected: false, needsReauth: false });
-    expect(await screen.findByRole('alert')).toHaveTextContent('QuickBooks is not connected');
-    expect(screen.getByRole('link', { name: 'Reconnect QuickBooks' })).toHaveAttribute('href', '/settings/integrations');
-  });
-
-  it('warns when the connection has expired', async () => {
-    banner({ connected: false, needsReauth: true, expiresInDays: 0 });
+  it('asks the user to sign in again when the connection is missing, and returns them to the same page', async () => {
+    banner({ connected: false, needsReauth: true }, '/estimates?tab=Accepted');
     expect(await screen.findByRole('alert')).toHaveTextContent('has expired');
+    expect(screen.getByRole('link', { name: 'Sign in with QuickBooks' })).toHaveAttribute(
+      'href',
+      '/api/auth/qbo/login?next=%2Festimates%3Ftab%3DAccepted',
+    );
   });
 
   it('warns ahead of time when the connection lapses within two weeks', async () => {
     banner({ connected: true, needsReauth: false, expiresInDays: 6 });
     expect(await screen.findByRole('alert')).toHaveTextContent('expires in 6 days');
-  });
-
-  it('is for admins only and never calls the API for sales', async () => {
-    const fetchMock = mockApi({});
-    renderWithProviders(<QboBanner user={{ ...admin, role: 'sales' }} />);
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

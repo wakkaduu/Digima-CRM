@@ -3,6 +3,8 @@ import env from '../config/env';
 import * as paymentModel from '../models/payment.model';
 import * as qbo from './qbo.service';
 import HttpError from '../utils/HttpError';
+import { allocate, buildDepositBody, buildPaymentBody, fromCents, postingDate, toCents } from './qboPosting';
+import { voidPosted } from './qboVoid';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -15,20 +17,15 @@ const DEPOSIT_ACCOUNT_BY_BANK: Record<string, string | undefined> = {
     Cash: env.QBO_DEPOSIT_ACCOUNT_CASH,
 };
 
-// Money is handled in integer centavos to avoid floating point errors.
-export const toCents = (v: unknown) => Math.round(Number(String(v)) * 100);
-export const fromCents = (c: number) => c / 100;
+export { toCents, fromCents };
 
-const todayManila = () =>
-    new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }); // YYYY-MM-DD
-
-/* Invoices linked to the estimate that still have a balance (oldest first). */
-async function getOpenInvoices(estimateId: string) {
+/* Every invoice linked to the estimate (any balance), oldest first. Empty when nothing was invoiced yet. */
+async function getLinkedInvoices(estimateId: string) {
     const estimate = await qbo.getEstimateById(estimateId);
     const invoiceIds = new Set(estimate.linkedInvoiceIds);
 
     // Fallback: the invoice also points back to its estimate via LinkedTxn.
-    if (!invoiceIds.size && estimate.customerId) {
+    if (!invoiceIds.size && estimate.customerId && /^\d+$/.test(estimate.customerId)) {
         const json = await qbo.runQuery(
             `select * from Invoice where CustomerRef = '${estimate.customerId}' MAXRESULTS 1000`
         );
@@ -41,7 +38,45 @@ async function getOpenInvoices(estimateId: string) {
         }
     }
 
-    if (!invoiceIds.size) {
+    const invoices: any[] = [];
+    for (const invoiceId of invoiceIds) {
+        const json = await qbo.qboRequest(`/invoice/${invoiceId}`);
+        invoices.push(json.Invoice);
+    }
+    return invoices.sort((a: any, b: any) => String(a.TxnDate).localeCompare(String(b.TxnDate)));
+}
+
+export interface InvoiceSummary {
+    invoices: { id: string; docNumber: string | null; txnDate: string; dueDate: string | null; total: number; balance: number }[];
+    /** Sum of the linked invoices. */
+    total: number;
+    /** Still owed in QuickBooks across the linked invoices. */
+    balance: number;
+    /** Total minus balance, as QuickBooks sees it (includes payments recorded outside the portal). */
+    paid: number;
+}
+
+/** What QuickBooks says about the invoices created from an estimate. */
+export async function getInvoiceSummary(estimateId: string): Promise<InvoiceSummary> {
+    const invoices = (await getLinkedInvoices(estimateId)).map((i: any) => ({
+        id: String(i.Id),
+        docNumber: i.DocNumber ?? null,
+        txnDate: i.TxnDate,
+        dueDate: i.DueDate ?? null,
+        total: Number(i.TotalAmt) || 0,
+        balance: Number(i.Balance) || 0,
+    }));
+    const cents = (pick: (i: (typeof invoices)[number]) => number) => invoices.reduce((n, i) => n + toCents(pick(i)), 0);
+    const total = cents((i) => i.total);
+    const balance = cents((i) => i.balance);
+    return { invoices, total: fromCents(total), balance: fromCents(balance), paid: fromCents(total - balance) };
+}
+
+/* Invoices linked to the estimate that still have a balance (oldest first). */
+async function getOpenInvoices(estimateId: string) {
+    const invoices = await getLinkedInvoices(estimateId);
+
+    if (!invoices.length) {
         throw new HttpError(
             409,
             'No invoice is linked to this estimate yet. In QuickBooks, open the estimate and choose "Create invoice", then approve again.',
@@ -49,16 +84,7 @@ async function getOpenInvoices(estimateId: string) {
         );
     }
 
-    const invoices: any[] = [];
-    for (const invoiceId of invoiceIds) {
-        const json = await qbo.qboRequest(`/invoice/${invoiceId}`);
-        invoices.push(json.Invoice);
-    }
-
-    const open = invoices
-        .filter((i: any) => toCents(i.Balance) > 0)
-        .sort((a: any, b: any) => String(a.TxnDate).localeCompare(String(b.TxnDate)));
-
+    const open = invoices.filter((i: any) => toCents(i.Balance) > 0);
     if (!open.length) {
         throw new HttpError(
             409,
@@ -67,22 +93,6 @@ async function getOpenInvoices(estimateId: string) {
         );
     }
     return open;
-}
-
-/* Spread the gross amount over open invoices; anything left stays as unapplied credit. */
-function allocate(invoices: any[], grossCents: number) {
-    let remaining = grossCents;
-    const lines: unknown[] = [];
-    for (const inv of invoices) {
-        if (remaining <= 0) break;
-        const apply = Math.min(remaining, toCents(inv.Balance));
-        lines.push({
-            Amount: fromCents(apply),
-            LinkedTxn: [{ TxnId: inv.Id, TxnType: 'Invoice' }],
-        });
-        remaining -= apply;
-    }
-    return { lines, unappliedCents: remaining };
 }
 
 /*
@@ -115,7 +125,7 @@ export async function pushToQbo({
     let paymentId = payment.qboPaymentId;
     let depositId = payment.qboDepositId;
     let unappliedCents = 0;
-    const txnDate = todayManila();
+    const txnDate = postingDate(payment.receivedOn);
     const note =
         `Portal payment ${payment.id} | ${payment.bankDepositedTo} | ` +
         `submitted by ${payment.submittedBy} | approved by ${approver}`;
@@ -126,16 +136,16 @@ export async function pushToQbo({
         const { lines, unappliedCents: leftover } = allocate(invoices, grossCents);
         unappliedCents = leftover;
 
-        const body = {
-            CustomerRef: invoices[0].CustomerRef,
-            TotalAmt: fromCents(grossCents),
-            TxnDate: txnDate,
-            PrivateNote: note,
-            Line: lines,
-            // No fee: money goes straight to the bank. Fee: park in Undeposited Funds, then Deposit.
-            ...(feeCents === 0 ? { DepositToAccountRef: { value: bankAccountId } } : {}),
-            ...(payment.referenceNo ? { PaymentRefNum: payment.referenceNo.slice(0, 21) } : {}),
-        };
+        const body = buildPaymentBody({
+            customerRef: invoices[0].CustomerRef,
+            grossCents,
+            feeCents,
+            bankAccountId,
+            txnDate,
+            note,
+            referenceNo: payment.referenceNo,
+            lines,
+        });
 
         const json = await qbo.qboRequest('/payment', {
             method: 'POST',
@@ -148,23 +158,15 @@ export async function pushToQbo({
 
     /* Step 2: Deposit (net into bank, fee as a negative expense line) */
     if (feeCents > 0 && !depositId) {
-        const body = {
-            DepositToAccountRef: { value: bankAccountId },
-            TxnDate: txnDate,
-            PrivateNote: note,
-            Line: [
-                {
-                    Amount: fromCents(grossCents),
-                    LinkedTxn: [{ TxnId: paymentId, TxnType: 'Payment', TxnLineId: '0' }],
-                },
-                {
-                    Amount: -fromCents(feeCents),
-                    DetailType: 'DepositLineDetail',
-                    Description: 'Bank / QR fee',
-                    DepositLineDetail: { AccountRef: { value: env.QBO_BANK_FEE_ACCOUNT_ID } },
-                },
-            ],
-        };
+        const body = buildDepositBody({
+            paymentId: paymentId!,
+            grossCents,
+            feeCents,
+            bankAccountId,
+            feeAccountId: env.QBO_BANK_FEE_ACCOUNT_ID!,
+            txnDate,
+            note,
+        });
 
         const json = await qbo.qboRequest('/deposit', {
             method: 'POST',
@@ -176,6 +178,12 @@ export async function pushToQbo({
     }
 
     return { paymentId, depositId, feeCents, unappliedCents };
+}
+
+/* Reverses an approved payment in QuickBooks (see qboVoid.ts). */
+export async function voidInQbo(payment: Payment) {
+    if (!payment.qboPaymentId) throw new HttpError(409, 'This payment was never posted to QuickBooks, so there is nothing to void.');
+    await voidPosted(qbo.qboRequest, { paymentId: payment.qboPaymentId, depositId: payment.qboDepositId });
 }
 
 /* Helper to find the account IDs you need for .env */

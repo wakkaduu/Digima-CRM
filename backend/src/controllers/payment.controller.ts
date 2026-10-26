@@ -10,6 +10,7 @@ import {
     receiptQuerySchema,
 } from '../validators/payment.validator';
 import { receiptUrls, toDetail, toListItem } from '../serializers/payment.serializer';
+import { dataScope } from '../config/roles';
 import * as qbo from '../services/qbo.service';
 import * as cloud from '../services/cloudinary.service';
 import * as storage from '../services/storage.service';
@@ -161,8 +162,8 @@ export const receipt = asyncHandler(async (req, res) => {
 type ReceiptRow = NonNullable<Awaited<ReturnType<typeof paymentModel.findReceiptInfo>>>;
 
 export async function sendReceipt(res: Response, payment: ReceiptRow, user: Request['user'], width?: number) {
-    // Admins can open any receipt; sales reps only their own.
-    if (user.role !== 'admin' && payment.submittedById !== user.id) {
+    // Admins and SuperAdmins can open any receipt; sales reps only their own.
+    if (dataScope(user.role) === 'sales' && payment.submittedById !== user.id) {
         throw new HttpError(403, 'You do not have access to this receipt');
     }
 
@@ -200,7 +201,7 @@ export async function sendReceipt(res: Response, payment: ReceiptRow, user: Requ
 
 // GET /api/payments/counts  -> numbers for the navigation badges (admin: awaiting review; sales: reviewed, not yet read)
 export const counts = asyncHandler(async (req, res) => {
-    if (req.user.role === 'admin') return res.json({ pending: await paymentModel.countPending() });
+    if (dataScope(req.user.role) === 'admin') return res.json({ pending: await paymentModel.countPending() });
     res.json({ unseen: await paymentModel.countUnseen(req.user.id) });
 });
 
@@ -210,13 +211,13 @@ export const recentEstimates = asyncHandler(async (req, res) => {
     res.json({ estimates: ids.length ? await qbo.getEstimatesByIds(ids) : [] });
 });
 
-// GET /api/payments  -> filtered, sorted, paged history. Sales see only their own; admins see everyone's.
+// GET /api/payments  -> filtered, sorted, paged history. Sales see only their own; admins and SuperAdmins see everyone's.
 export const list = asyncHandler(async (req, res) => {
     const parsed = listQuerySchema.safeParse(req.query);
     if (!parsed.success) {
         throw new HttpError(400, parsed.error.issues[0].message, parsed.error.flatten().fieldErrors);
     }
-    const role = req.user.role as 'admin' | 'sales';
+    const role = dataScope(req.user.role);
     const { items, total } = await paymentModel.search(parsed.data, { role, userId: req.user.id });
     res.json({
         items: items.map((p) => toListItem(p, role)),
@@ -233,7 +234,7 @@ export const detail = asyncHandler(async (req, res) => {
 
     const payment = await paymentModel.findById(id.data);
     if (!payment) throw new HttpError(404, 'Payment not found');
-    const role = req.user.role as 'admin' | 'sales';
+    const role = dataScope(req.user.role);
     if (role === 'sales' && payment.submittedById !== req.user.id) {
         throw new HttpError(403, 'You do not have access to this payment');
     }

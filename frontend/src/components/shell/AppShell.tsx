@@ -19,15 +19,13 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
   const desktop = useMediaQuery('(min-width: 1024px)');
   const keyboardOpen = useKeyboardOpen();
   const [collapsed, toggle] = useSidebarCollapsed();
-  const counts = useNavCounts(user);
+  const counts = useNavCounts();
   const [hideTabs, setHideTabs] = useState(false);
   const showTabs = !desktop && !keyboardOpen && !hideTabs;
   const [searchOpen, setSearchOpen] = useState(false);
-  const canSearch = !user.mustChangePassword;
 
   // Ctrl/Cmd+K opens the search from anywhere.
   useEffect(() => {
-    if (!canSearch) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -36,7 +34,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canSearch]);
+  }, []);
 
   return (
     <ShellContext value={{ setHideTabs }}>
@@ -52,16 +50,14 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
       ) : (
         <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
           <BrandLockup />
-          {canSearch && (
-            <div className="flex items-center">
-              <SearchButton onClick={() => setSearchOpen(true)} />
-              <AlertsLink user={user} counts={counts} />
-            </div>
-          )}
+          <div className="flex items-center">
+            <SearchButton onClick={() => setSearchOpen(true)} />
+            <AlertsLink user={user} counts={counts} />
+          </div>
         </header>
       )}
-      {desktop && canSearch && <TopBar user={user} counts={counts} onSearch={() => setSearchOpen(true)} />}
-      <QboBanner user={user} />
+      {desktop && <TopBar user={user} counts={counts} onSearch={() => setSearchOpen(true)} />}
+      <QboBanner />
       <main
         id="content"
         tabIndex={-1}
@@ -73,7 +69,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         {children}
       </main>
       {showTabs && <TabBar user={user} counts={counts} />}
-      {canSearch && <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} user={user} />}
+      <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} user={user} />
     </div>
     </ShellContext>
   );

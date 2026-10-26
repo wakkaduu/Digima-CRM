@@ -1,25 +1,51 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
-import { usePaymentDetail } from '../../api/payments';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Ban } from 'lucide-react';
+import { api, ApiError } from '../../api/client';
+import { PAYMENTS_KEY, usePaymentDetail } from '../../api/payments';
+import { CRM_KEY } from '../../api/crm';
 import type { AuditEvent } from '../../api/types';
 import { bankLabel, dateTime, dayLabel, peso } from '../../lib/format';
 import { Message } from '../Message';
+import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { DetailSkeleton } from '../ui/Skeletons';
 import { ErrorState } from '../ui/States';
 import { StatusBadge } from '../ui/StatusBadge';
+import { useToast } from '../ui/Toast';
 import { ReceiptViewer } from './ReceiptViewer';
+import { VoidDialog } from './VoidDialog';
 
 const EVENT_TEXT: Record<AuditEvent['type'], string> = {
   submitted: 'Submitted',
   approved: 'Approved and posted to QuickBooks',
   rejected: 'Rejected',
+  voided: 'Voided in QuickBooks',
 };
 
 /** Read-only view of a payment that was already reviewed: amounts, receipt, QuickBooks ids and who did what, when. */
 export function PaymentHistoryDetail({ id }: { id: string }) {
   const { search } = useLocation();
   const { data: p, error, refetch, isPending } = usePaymentDetail(id);
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [voiding, setVoiding] = useState(false);
+
+  const voidPayment = useMutation({
+    mutationFn: (reason: string) => api(`/api/payments/void/${id}`, { method: 'POST', json: { reason } }),
+    onSuccess: () => {
+      toast({ text: 'Payment voided in QuickBooks.' });
+    },
+    onError: (err) => {
+      toast({ type: 'error', title: 'Could not void the payment', text: err instanceof ApiError ? err.message : 'Unknown error' });
+    },
+    onSettled: () => {
+      setVoiding(false);
+      void qc.invalidateQueries({ queryKey: PAYMENTS_KEY });
+      void qc.invalidateQueries({ queryKey: CRM_KEY }); // estimate progress and invoice balance change
+    },
+  });
 
   return (
     <div>
@@ -48,6 +74,11 @@ export function PaymentHistoryDetail({ id }: { id: string }) {
           {p.status === 'pending' && (
             <Message type="info" className="mb-0">
               This payment is waiting for review. Open it from the Pending tab.
+            </Message>
+          )}
+          {p.status === 'voided' && (
+            <Message type="warning" className="mb-0">
+              Voided in QuickBooks{p.voidReason ? `. Reason: ${p.voidReason}` : '.'}
             </Message>
           )}
           {p.status === 'rejected' && p.rejectionReason && (
@@ -93,6 +124,12 @@ export function PaymentHistoryDetail({ id }: { id: string }) {
                 )}
               </dl>
 
+              {p.status === 'approved' && p.qbo?.paymentId && (
+                <Button variant="danger" onClick={() => setVoiding(true)}>
+                  <Ban aria-hidden className="size-4" /> Void payment
+                </Button>
+              )}
+
               <section aria-label="History">
                 <h3 className="mb-2 font-semibold">History</h3>
                 <ol className="space-y-2 border-l-2 border-border pl-4">
@@ -112,6 +149,17 @@ export function PaymentHistoryDetail({ id }: { id: string }) {
             </div>
           </div>
         </Card>
+      )}
+
+      {p && (
+        <VoidDialog
+          key={p.id}
+          open={voiding}
+          payment={p}
+          loading={voidPayment.isPending}
+          onConfirm={(reason) => voidPayment.mutate(reason)}
+          onCancel={() => setVoiding(false)}
+        />
       )}
     </div>
   );

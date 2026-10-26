@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
 import { Link2, RefreshCw, FlaskConical } from 'lucide-react';
 import { api } from '../api/client';
 import { QBO_REAUTH_KEY, QBO_STATUS_KEY } from '../api/qbo';
 import type { Estimate, QboStatus } from '../api/types';
+import { signInUrl } from '../api/auth';
 import { Message } from '../components/Message';
 import { buttonClass, Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -20,11 +20,10 @@ interface TestResult {
   raw: unknown;
 }
 
-/** Admin: QuickBooks connection health, reconnect, and a connectivity test. */
+/** Your own QuickBooks connection: health, renewing it, and a connectivity test. */
 export default function SetupPage() {
   useDocumentTitle('QuickBooks');
   const qc = useQueryClient();
-  const [params] = useSearchParams();
 
   // Asks Intuit to confirm the link, so this is the authoritative check.
   const status = useQuery({
@@ -48,15 +47,11 @@ export default function SetupPage() {
     },
   });
 
-  const flash = params.get('qbo');
   const healthy = !!s?.connected && !s.verifyError && !s.needsReauth;
 
   return (
     <div className="max-w-2xl space-y-4">
-      <PageHeader title="QuickBooks" description="The connection that lets approved payments post to your books." />
-
-      {flash === 'connected' && <Message type="ok">QuickBooks connected.</Message>}
-      {flash === 'error' && <Message>QuickBooks connection failed: {params.get('reason') ?? 'unknown reason'}</Message>}
+      <PageHeader title="QuickBooks" description="Your own QuickBooks connection. It is created when you sign in, and what you can see and post follows your QuickBooks permissions." />
 
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -101,15 +96,15 @@ export default function SetupPage() {
         )}
         {s?.verifyError && (
           <Message type="error" className="mb-0">
-            QuickBooks rejected the saved connection: {s.verifyError}. Reconnect to fix it.
+            QuickBooks rejected the saved connection: {s.verifyError}. Sign in with QuickBooks again to fix it.
           </Message>
         )}
 
         <div className="flex flex-wrap gap-2">
           {/* A real navigation: the backend redirects to Intuit and back. */}
-          <a href="/api/auth/qbo" className={buttonClass({ variant: healthy ? 'secondary' : 'primary' })}>
+          <a href={signInUrl('/settings/integrations')} className={buttonClass({ variant: healthy ? 'secondary' : 'primary' })}>
             <Link2 aria-hidden className="size-4" />
-            {s?.connected ? 'Reconnect to QuickBooks' : 'Connect to QuickBooks'}
+            {s?.connected ? 'Reconnect to QuickBooks' : 'Sign in with QuickBooks'}
           </a>
           <Button onClick={() => status.refetch()} loading={status.isFetching && !status.isPending}>
             <RefreshCw aria-hidden className="size-4" />

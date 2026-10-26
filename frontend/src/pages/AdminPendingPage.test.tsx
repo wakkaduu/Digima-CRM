@@ -217,7 +217,7 @@ describe('AdminPendingPage history, config and undo', () => {
 
   it('lists reviewed payments from the server and opens one read-only with its audit trail', async () => {
     const fetchMock = setup({
-      'GET /api/payments?status=approved%2Crejected&sort=createdAt%3Adesc&page=1&pageSize=25': [200, { items: [reviewed], total: 1, page: 1, pageSize: 25 }],
+      'GET /api/payments?status=approved%2Crejected%2Cvoided&sort=createdAt%3Adesc&page=1&pageSize=25': [200, { items: [reviewed], total: 1, page: 1, pageSize: 25 }],
       'GET /api/payments/h1': [200, { payment: detail }],
     });
     await screen.findByText('Acme Corp');
@@ -238,6 +238,48 @@ describe('AdminPendingPage history, config and undo', () => {
     // Read-only: no approve / reject controls on a reviewed payment.
     expect(screen.queryByRole('button', { name: /^Approve/ })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('voids an approved payment with a reason, and reloads the payment afterwards', async () => {
+    const approved = { ...reviewed, id: 'h2', customerName: 'Echo Co', status: 'approved', rejectionReason: null, voidReason: null };
+    const approvedDetail = {
+      ...detail,
+      ...approved,
+      events: [{ type: 'submitted', at: approved.createdAt, by: 'Sam' }, { type: 'approved', at: approved.reviewedAt, by: 'Ana' }],
+      qbo: { paymentId: '77', depositId: '78', customerId: '5' },
+    };
+    const fetchMock = setup({
+      'GET /api/payments?status=approved%2Crejected%2Cvoided&sort=createdAt%3Adesc&page=1&pageSize=25': [200, { items: [approved], total: 1, page: 1, pageSize: 25 }],
+      'GET /api/payments/h2': [200, { payment: approvedDetail }],
+      'POST /api/payments/void/h2': [200, { ok: true }],
+    });
+    await screen.findByText('Acme Corp');
+    await userEvent.click(screen.getByRole('button', { name: 'History' }));
+    await userEvent.click(await screen.findByRole('link', { name: /Echo Co/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Void payment/ }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Void Echo Co/ });
+    expect(dialog).toHaveTextContent('deposit is deleted');
+    // A reason is required.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Void payment' }));
+    expect(await within(dialog).findByText(/Give a reason of at least 3 characters/)).toBeInTheDocument();
+    expect(posts(fetchMock)).toEqual([]);
+
+    await userEvent.type(within(dialog).getByLabelText('Reason for voiding'), 'Wrong estimate');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Void payment' }));
+    await waitFor(() => expect(posts(fetchMock)).toEqual([['/api/payments/void/h2', { reason: 'Wrong estimate' }]]));
+  });
+
+  it('offers no void button on a payment that is not approved', async () => {
+    setup({
+      'GET /api/payments?status=approved%2Crejected%2Cvoided&sort=createdAt%3Adesc&page=1&pageSize=25': [200, { items: [reviewed], total: 1, page: 1, pageSize: 25 }],
+      'GET /api/payments/h1': [200, { payment: detail }],
+    });
+    await screen.findByText('Acme Corp');
+    await userEvent.click(screen.getByRole('button', { name: 'History' }));
+    await userEvent.click(await screen.findByRole('link', { name: /Delta LLC/ }));
+    await screen.findByText('Reason: Receipt is unclear');
+    expect(screen.queryByRole('button', { name: /Void payment/ })).not.toBeInTheDocument();
   });
 
   it('takes the fee rate from the API config', async () => {

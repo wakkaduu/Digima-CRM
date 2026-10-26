@@ -1,5 +1,6 @@
 import * as paymentModel from '../models/payment.model';
 import * as qbo from '../services/qbo.service';
+import * as qboPayment from '../services/qboPayment.service';
 import { customerStatusCounts, estimateStatusCounts, isOpenEstimate, queryCustomers, queryEstimates } from '../crm/query';
 import { customerListSchema, estimateListSchema, qboIdSchema } from '../validators/crm.validator';
 import HttpError from '../utils/HttpError';
@@ -65,4 +66,10 @@ export const estimateDetail = asyncHandler(async (req, res) => {
     const estimate = await qbo.getEstimateDetail(id);
     const [withTotals] = await qbo.attachPortalTotals([estimate]);
     res.json({ estimate: withTotals });
+});
+
+// GET /api/estimates/:id/invoices  -> what QuickBooks says about the invoices made from this estimate (balance, paid)
+export const estimateInvoices = asyncHandler(async (req, res) => {
+    const id = parse(qboIdSchema.safeParse(req.params.id));
+    res.json(await qboPayment.getInvoiceSummary(id));
 });

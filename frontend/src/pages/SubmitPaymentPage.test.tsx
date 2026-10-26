@@ -68,6 +68,46 @@ describe('SubmitPaymentPage', () => {
     expect(screen.getByRole('button', { name: 'Change estimate' })).toBeInTheDocument();
   });
 
+  describe('invoice check against QuickBooks', () => {
+    const open = (invoices: unknown) => {
+      mockApi({
+        ...baseRoutes,
+        'GET /api/estimates/9': [200, { estimate: { ...estimate, customerId: '58', lines: [], memo: null, linkedInvoiceIds: [] } }],
+        'GET /api/estimates/9/invoices': [200, invoices],
+      });
+      renderWithProviders(<SubmitPaymentPage />, '/payments/new?estimateId=9');
+    };
+    const summary = (balance: number) => ({
+      invoices: [{ id: '5', docNumber: '5001', txnDate: '2026-10-02', dueDate: null, total: 10000, balance }],
+      total: 10000,
+      balance,
+      paid: 10000 - balance,
+    });
+
+    it('tells the rep when no invoice exists yet, but lets them carry on', async () => {
+      open({ invoices: [], total: 0, balance: 0, paid: 0 });
+      expect(await screen.findByText(/QuickBooks has no invoice for this estimate yet/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit for approval' })).toBeEnabled();
+    });
+
+    it('warns when the amount is more than the invoice can still take', async () => {
+      open(summary(400));
+      await userEvent.type(await screen.findByLabelText(/Amount received/), '500');
+      expect(await screen.findByText(/more than the ₱400.00 the invoice can still take/)).toBeInTheDocument();
+    });
+
+    it('stays quiet when the amount fits', async () => {
+      open(summary(400));
+      await userEvent.type(await screen.findByLabelText(/Amount received/), '300');
+      await waitFor(() => expect(screen.queryByText(/the invoice can still take/)).not.toBeInTheDocument());
+    });
+
+    it('warns when the invoice is already paid', async () => {
+      open(summary(0));
+      expect(await screen.findByText(/already fully paid in QuickBooks/)).toBeInTheDocument();
+    });
+  });
+
   it('hides the reference number for cash only', async () => {
     renderWithProviders(<SubmitPaymentPage />);
     await screen.findByRole('radio', { name: 'Cash' });

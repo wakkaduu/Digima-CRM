@@ -1,14 +1,28 @@
 // Shapes returned by the backend API (see backend/src/controllers).
 
-export type Role = 'admin' | 'sales';
-export type PaymentStatus = 'pending' | 'approved' | 'rejected';
+export type Role = 'admin' | 'sales' | 'superadmin';
+export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'voided';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
-  mustChangePassword: boolean;
+}
+
+/** A row from GET /api/users (SuperAdmin account management). */
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  active: boolean;
+  /** Their Intuit login is linked (they accepted an invite). */
+  linked: boolean;
+  /** A one-time invite link is outstanding; it may have expired (see inviteExpiresAt). */
+  invitePending: boolean;
+  inviteExpiresAt: string | null;
+  createdAt: string;
 }
 
 export interface Estimate {
@@ -37,6 +51,7 @@ export interface MyPayment {
   bankDepositedTo: string;
   status: PaymentStatus;
   rejectionReason: string | null;
+  voidReason?: string | null;
   createdAt: string;
   receivedOn: string | null;
   receivedBy: string | null;
@@ -69,12 +84,13 @@ export interface PendingPayment {
 export interface HistoryPayment extends PendingPayment {
   receivedById: string | null;
   rejectionReason: string | null;
+  voidReason: string | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
 }
 
 export interface AuditEvent {
-  type: 'submitted' | 'approved' | 'rejected';
+  type: 'submitted' | 'approved' | 'rejected' | 'voided';
   at: string;
   by: string | null;
   note?: string | null;
@@ -112,7 +128,7 @@ export interface ApproveResult {
 
 export interface QboStatus {
   connected: boolean;
-  /** A connection exists but has expired: an admin must reconnect. */
+  /** A connection exists but has expired: the user must sign in with QuickBooks again. */
   needsReauth?: boolean;
   realmId?: string;
   companyName?: string;
@@ -182,3 +198,13 @@ export type LinkedPayment = Pick<
   'id' | 'customerName' | 'qboEstimateId' | 'qboEstimateNumber' | 'amountSubmitted' | 'finalAmount' | 'bankDepositedTo' | 'status' | 'createdAt'
 > &
   Partial<Pick<HistoryPayment, 'submittedBy'>>;
+
+/** GET /api/estimates/:id/invoices: what QuickBooks says about the invoices made from an estimate. */
+export interface InvoiceSummary {
+  invoices: { id: string; docNumber: string | null; txnDate: string; dueDate: string | null; total: number; balance: number }[];
+  total: number;
+  /** Still owed in QuickBooks. */
+  balance: number;
+  /** Total minus balance (includes payments recorded directly in QuickBooks). */
+  paid: number;
+}

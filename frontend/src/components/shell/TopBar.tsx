@@ -7,6 +7,7 @@ import { CountChip } from '../ui/StatusBadge';
 
 /** Shortcut to what needs the user next: admins their review queue, sales their payment updates. */
 export function AlertsLink({ user, counts }: { user: User; counts: Record<'pending' | 'unseen', number> }) {
+  if (user.role === 'superadmin') return null; // nothing for them to act on: they do not review or submit payments
   const admin = user.role === 'admin';
   const count = admin ? counts.pending : counts.unseen;
   const label = admin ? 'Payments awaiting review' : 'Payment updates';
