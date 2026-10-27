@@ -41,15 +41,17 @@ describe('Sales dashboard', () => {
     });
     renderWithProviders(<DashboardPage />, '/dashboard');
 
-    expect(await screen.findByRole('heading', { name: /, Sam$/ })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: /Approved.*₱2,462\.50 posted/ })).toHaveAttribute('href', '/payments?tab=approved');
-    expect(screen.getByRole('link', { name: /Awaiting review.*1/ })).toHaveAttribute('href', '/payments?tab=pending');
-    expect(screen.getByRole('link', { name: /Rejected.*Check the reasons/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Posted to QuickBooks.*₱2,462\.50/ })).toHaveAttribute('href', '/payments?tab=approved');
+    expect(screen.getByRole('link', { name: /Waiting for review.*1/ })).toHaveAttribute('href', '/payments?tab=pending');
+    expect(screen.getByRole('link', { name: /Rejected.*Read the reasons/ })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /Open estimates.*7/ })).toBeInTheDocument(); // Pending 3 + Accepted 4
-    expect(screen.getByText(/1 of your submissions has been reviewed/)).toBeInTheDocument();
+    expect(screen.getByText(/₱2,462\.50 posted from 1 approved payment/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '1 result not seen yet' })).toHaveAttribute('href', '/payments');
+    const fix = screen.getByRole('region', { name: 'Needs a fix' });
+    expect(within(fix).getByText('Blurry')).toBeInTheDocument();
     const recent = screen.getByRole('region', { name: 'Recent payments' });
     expect(within(recent).getByText('Acme Corp')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Submit a payment/ })).toHaveAttribute('href', '/payments/new');
     expect(await screen.findByText(/Estimates you submit payments for will appear here/)).toBeInTheDocument();
   });
 

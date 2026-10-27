@@ -128,7 +128,7 @@ describe('SubmitPaymentPage', () => {
     renderWithProviders(<SubmitPaymentPage />);
     const amount = await screen.findByLabelText(/Amount received/);
     await userEvent.type(amount, '₱ 2500');
-    expect(screen.getByText('₱2,500.00')).toBeInTheDocument();
+    expect(screen.getAllByText('₱2,500.00').length).toBeGreaterThan(0); // the hint and the summary
     await userEvent.tab();
     expect(amount).toHaveValue('2,500.00');
   });

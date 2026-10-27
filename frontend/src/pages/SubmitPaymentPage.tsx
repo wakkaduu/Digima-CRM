@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Circle } from 'lucide-react';
 import { api, apiUpload, ApiError } from '../api/client';
 import { useMe } from '../api/auth';
 import { useEstimate, useInvoiceSummary } from '../api/crm';
@@ -339,7 +339,7 @@ export function SubmitPaymentPage() {
 
   return (
     <div>
-      <PageHeader title="Submit a payment" description="Attach the receipt and send it for approval." />
+      <PageHeader title="Submit payment" description="Pick the estimate, enter what was received and attach the receipt. An admin checks it and posts it to QuickBooks." />
 
       {qboDown && (
         <Message>
@@ -383,6 +383,7 @@ export function SubmitPaymentPage() {
       <form noValidate onSubmit={onSubmit} className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
         <div>
           <Card className="mb-4">
+            <h2 className="mb-3 text-body font-semibold">Estimate</h2>
             <EstimatePicker
               selected={selected}
               error={errors.estimate}
@@ -395,6 +396,7 @@ export function SubmitPaymentPage() {
               }}
             />
 
+            <h2 className="mt-6 mb-3 text-body font-semibold">Payment</h2>
             <Field
               id="amount"
               label="Amount received (PHP)"
@@ -478,6 +480,7 @@ export function SubmitPaymentPage() {
               />
             )}
 
+            <h2 className="mt-6 mb-3 text-body font-semibold">Proof</h2>
             <ReceiptUpload
               file={file}
               previewUrl={previewUrl}
@@ -509,27 +512,56 @@ export function SubmitPaymentPage() {
         </div>
 
         <aside aria-label="Summary" className="hidden lg:sticky lg:top-6 lg:block">
-          <Card>
-            <h2 className="mb-3 text-[1.0625rem] font-semibold">Summary</h2>
-            {selected ? (
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 tabular-nums [&_dt]:text-text-muted [&_dd]:text-right">
-                <dt>Customer</dt>
-                <dd>{selected.customerName}</dd>
-                <dt>Estimate</dt>
-                <dd>#{selected.docNumber || selected.id}</dd>
+          <Card className="p-5">
+            <h2 className="text-small text-text-muted">This payment</h2>
+            <p className={`mt-1 text-[1.875rem] leading-9 font-semibold tabular-nums ${amountValid ? '' : 'text-text-muted'}`}>{peso(amountValid ? amountNumber : 0)}</p>
+            <p className="mt-0.5 min-h-5 text-small text-text-muted">
+              {selected ? `${selected.customerName} · estimate #${selected.docNumber || selected.id}` : 'Choose an estimate to see its balance.'}
+            </p>
+
+            {selected && selected.totalAmount > 0 && (
+              <div aria-hidden className="mt-4 flex h-2 overflow-hidden rounded-badge bg-surface-sunk">
+                <span className="bg-accent" style={{ width: `${Math.min(100, (selected.approvedAmount / selected.totalAmount) * 100)}%` }} />
+                <span className="bg-border-strong" style={{ width: `${Math.min(100, (selected.pendingAmount / selected.totalAmount) * 100)}%` }} />
+                <span className="bg-success" style={{ width: `${amountValid ? Math.min(100, (amountNumber / selected.totalAmount) * 100) : 0}%` }} />
+              </div>
+            )}
+            {selected && (
+              <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 tabular-nums [&_dt]:text-text-muted [&_dd]:text-right">
                 <dt>Estimate total</dt>
                 <dd>{peso(selected.totalAmount)}</dd>
-                <dt>Remaining</dt>
+                <dt className="flex items-center gap-2"><span aria-hidden className="size-2 rounded-full bg-accent" />Approved so far</dt>
+                <dd>{peso(selected.approvedAmount)}</dd>
+                <dt className="flex items-center gap-2"><span aria-hidden className="size-2 rounded-full bg-border-strong" />Awaiting review</dt>
+                <dd>{peso(selected.pendingAmount)}</dd>
+                <dt className="flex items-center gap-2"><span aria-hidden className="size-2 rounded-full bg-success" />This payment</dt>
+                <dd>{amountValid ? peso(amountNumber) : '—'}</dd>
+                <dt>Left to collect</dt>
                 <dd>{peso(remainingOf(selected))}</dd>
-                <dt className="font-semibold text-text">This payment</dt>
-                <dd className="font-semibold">{amountValid ? peso(amountNumber) : '—'}</dd>
+                <dt className="font-semibold text-text">Left after this payment</dt>
+                <dd className={`font-semibold ${amountValid && overRemaining ? 'text-danger' : ''}`}>
+                  {amountValid ? (overRemaining ? `${peso(amountNumber - remainingOf(selected))} over` : peso(remainingOf(selected) - amountNumber)) : '—'}
+                </dd>
               </dl>
-            ) : (
-              <p className="text-text-muted">Choose an estimate to see its balance.</p>
             )}
-            {previewUrl && (
-              <img src={previewUrl} alt="" className="mt-3 block max-h-40 rounded-control border border-border" />
-            )}
+
+            <h3 className="mt-5 mb-1.5 text-small text-text-muted">Before you submit</h3>
+            <ul className="space-y-1.5">
+              {[
+                ['Estimate chosen', !!selected],
+                ['Amount entered', amountValid],
+                ['Account chosen', !!bank],
+                ['Receipt attached', !!file],
+              ].map(([label, done]) => (
+                <li key={label as string} className={`flex items-center gap-2 ${done ? '' : 'text-text-muted'}`}>
+                  {done ? <CheckCircle2 aria-hidden className="size-4 text-success" /> : <Circle aria-hidden className="size-4" />}
+                  {label as string}
+                  <span className="sr-only">{done ? ', done' : ', still needed'}</span>
+                </li>
+              ))}
+            </ul>
+
+            {previewUrl && <img src={previewUrl} alt="Receipt preview" className="mt-4 block max-h-48 w-full rounded-control border border-border object-contain" />}
           </Card>
         </aside>
       </form>

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { SearchX, Users } from 'lucide-react';
 import { useCustomers } from '../api/crm';
@@ -11,7 +12,8 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { ResultsSkeleton } from '../components/ui/Skeletons';
 import { RelativeTime } from '../components/ui/RelativeTime';
 import { EmptyState, ErrorState } from '../components/ui/States';
-import { ActiveBadge } from '../components/ui/StatusBadge';
+import { Avatar } from '../components/ui/Avatar';
+import { NeutralBadge } from '../components/ui/StatusBadge';
 import { peso } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -24,26 +26,49 @@ const TABS = [
   { id: 'inactive', label: 'Inactive' },
 ] as const;
 
-const COLUMNS: Column<CustomerRow>[] = [
+/** A stable number from the QuickBooks id, so a customer keeps the same tint. */
+const hashIndex = (id: string) => [...id].reduce((n, ch) => n + ch.charCodeAt(0), 0);
+
+const columnsFor = (maxBalance: number): Column<CustomerRow>[] => [
   {
     id: 'name',
     header: 'Customer',
     pin: true,
     sortable: true,
     cell: (c) => (
-      <>
-        <div className="font-semibold">{c.name}</div>
-        {(c.email || c.phone) && <div className="text-small text-text-muted">{[c.email, c.phone].filter(Boolean).join(' · ')}</div>}
-      </>
+      <div className="flex items-center gap-3">
+        <Avatar name={c.name} index={hashIndex(c.id)} />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{c.name}</span>
+            {!c.active && <NeutralBadge>Inactive</NeutralBadge>}
+          </div>
+          {(c.email || c.phone) && <div className="text-small text-text-muted">{[c.email, c.phone].filter(Boolean).join(' · ')}</div>}
+        </div>
+      </div>
     ),
   },
-  { id: 'status', header: 'Status', cell: (c) => <ActiveBadge active={c.active} /> },
   // A zero is printed, in grey: nothing open, nothing owed.
   { id: 'openEstimates', header: 'Open estimates', align: 'right', sortable: true, cell: (c) => <span className={c.openEstimates === 0 ? 'text-text-muted' : undefined}>{c.openEstimates}</span> },
-  { id: 'balance', header: 'Balance', align: 'right', sortable: true, cell: (c) => <span className={c.balance === 0 ? 'text-text-muted' : 'font-semibold'}>{peso(c.balance)}</span> },
+  {
+    id: 'balance',
+    header: 'Balance',
+    align: 'right',
+    sortable: true,
+    className: 'w-44',
+    // The thin bar is the balance against the largest on this page; zero prints in grey with no bar.
+    cell: (c) => (
+      <div className="ml-auto w-32">
+        <div className={c.balance === 0 ? 'text-text-muted' : 'font-semibold'}>{peso(c.balance)}</div>
+        <div aria-hidden className="mt-1 flex h-0.5 justify-end bg-surface-sunk">
+          <div className="h-full bg-accent" style={{ width: `${maxBalance > 0 ? (c.balance / maxBalance) * 100 : 0}%` }} />
+        </div>
+      </div>
+    ),
+  },
   { id: 'lastPayment', header: 'Last payment', sortable: true, className: 'whitespace-nowrap', cell: (c) => (c.lastPaymentAt ? <RelativeTime value={c.lastPaymentAt} /> : <span className="text-text-muted">None yet</span>) },
 ];
-const SORTABLE = COLUMNS.filter((c) => c.sortable).map((c) => c.id);
+const SORTABLE = columnsFor(0).filter((c) => c.sortable).map((c) => c.id);
 
 /** Customers: the QuickBooks customer list with open estimates, balance and last payment. */
 export default function CustomersPage() {
@@ -64,11 +89,19 @@ export default function CustomersPage() {
     pageSize,
   });
   const counts = data?.counts;
+  const columns = useMemo(() => columnsFor(Math.max(0, ...(data?.items ?? []).map((c) => c.balance))), [data]);
   const filtered = f.q.trim() !== '' || tab !== 'all';
 
   return (
     <div>
-      <PageHeader title="Customers" description="Your QuickBooks customers, with what is open and what they owe." />
+      <PageHeader
+        title="Customers"
+        description={
+          counts
+            ? `${counts.all} ${counts.all === 1 ? 'customer' : 'customers'} in QuickBooks, ${counts.active} active. Open one to see its estimates and payments.`
+            : 'Your QuickBooks customers, with what is open and what they owe.'
+        }
+      />
 
       <FilterBar
         tabs={{
@@ -102,7 +135,7 @@ export default function CustomersPage() {
           pageSize={pageSize}
           onPage={(p) => set({ page: String(p) })}
           onPageSize={(s) => set({ size: String(s), page: '' })}
-          columns={COLUMNS}
+          columns={columns}
           getRowId={(c) => c.id}
           label="Customers"
           sort={sort}
@@ -114,7 +147,7 @@ export default function CustomersPage() {
               title={c.name}
               amount={c.balance > 0 ? peso(c.balance) : undefined}
               meta={`${c.openEstimates} open ${c.openEstimates === 1 ? 'estimate' : 'estimates'}${c.lastPaymentAt ? '' : ' · No payments yet'}`}
-              badge={!c.active ? <ActiveBadge active={false} /> : undefined}
+              badge={!c.active ? <NeutralBadge>Inactive</NeutralBadge> : undefined}
               note={c.lastPaymentAt ? <>Last payment <RelativeTime value={c.lastPaymentAt} /></> : undefined}
             />
           )}

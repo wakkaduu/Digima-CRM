@@ -12,7 +12,8 @@ import { Dialog } from '../components/ui/Dialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ResultsSkeleton } from '../components/ui/Skeletons';
 import { EmptyState, ErrorState } from '../components/ui/States';
-import { NewDot, StatusBadge } from '../components/ui/StatusBadge';
+import { NewDot, PaymentStatusDot, StatusBadge } from '../components/ui/StatusBadge';
+import { Figure, FigureStrip } from '../components/dashboard/Figure';
 import { RelativeTime } from '../components/ui/RelativeTime';
 import type { Column } from '../components/data/DataTable';
 import { ListRow } from '../components/data/DataList';
@@ -105,14 +106,14 @@ const COLUMNS: Column<MyPayment>[] = [
       </>
     ),
   },
-  { id: 'amount', header: 'Amount', align: 'right', sortValue: (p) => Number(p.amountSubmitted), cell: (p) => peso(p.amountSubmitted) },
+  { id: 'amount', header: 'Amount', align: 'right', sortValue: (p) => Number(p.amountSubmitted), cell: (p) => <span className="font-semibold">{peso(p.amountSubmitted)}</span> },
   {
     id: 'status',
     header: 'Status',
     sortValue: (p) => p.status,
     cell: (p) => (
       <>
-        <StatusBadge status={p.status} label={STATUS_TEXT[p.status]} />
+        <PaymentStatusDot status={p.status} label={STATUS_TEXT[p.status]} />
         {p.unseen && (
           <span className="ml-2">
             <NewDot />
@@ -151,6 +152,10 @@ export function MyPaymentsPage() {
     }),
     [all],
   );
+  const sums = useMemo(() => {
+    const sum = (status: PaymentStatus) => all.filter((p) => p.status === status).reduce((n, p) => n + Math.round(Number((status === 'approved' && p.finalAmount) || p.amountSubmitted) * 100), 0) / 100;
+    return { pending: sum('pending'), approved: sum('approved'), rejected: sum('rejected') };
+  }, [all]);
   const banks = useMemo(() => [...new Set(all.map((p) => p.bankDepositedTo))].sort(), [all]);
   const tab = (TABS.some((t) => t.id === f.tab) ? f.tab : 'all') as Filter;
   const q = f.q.trim().toLowerCase();
@@ -167,7 +172,18 @@ export function MyPaymentsPage() {
     <div>
       <PageHeader
         title="My payments"
-        description="Payments you submitted and whether they were approved."
+        description={
+          unseen > 0 ? (
+            <>
+              {unseen} of your submissions {unseen === 1 ? 'has' : 'have'} been reviewed since you last checked, marked New.{' '}
+              <Button variant="link" onClick={() => dismiss.mutate()} disabled={dismiss.isPending}>
+                Mark as seen
+              </Button>
+            </>
+          ) : (
+            'Payments you submitted and whether they were approved.'
+          )
+        }
         actions={
           <Link to="/payments/new" className={buttonClass({ variant: 'primary' })}>
             Submit payment
@@ -175,15 +191,18 @@ export function MyPaymentsPage() {
         }
       />
 
-      {unseen > 0 && (
-        <Message type="info">
-          {unseen} of your submissions {unseen === 1 ? 'has' : 'have'} been reviewed since you last checked (marked New).
-          <div className="mt-2">
-            <Button size="sm" onClick={() => dismiss.mutate()}>
-              Dismiss
-            </Button>
-          </div>
-        </Message>
+      {all.length > 0 && (
+        <FigureStrip className="mb-4 grid-cols-1 sm:grid-cols-3">
+          <Figure label="Waiting for review" to="/payments?tab=pending" value={peso(sums.pending)} note={`${counts.pending} ${counts.pending === 1 ? 'payment' : 'payments'}`} />
+          <Figure label="Approved" to="/payments?tab=approved" value={peso(sums.approved)} note={`${counts.approved} ${counts.approved === 1 ? 'payment' : 'payments'} posted`} />
+          <Figure
+            label="Rejected"
+            to="/payments?tab=rejected"
+            value={peso(sums.rejected)}
+            tone={counts.rejected > 0 ? 'danger' : undefined}
+            note={counts.rejected > 0 ? `${counts.rejected} to fix and resubmit` : 'Nothing to fix'}
+          />
+        </FigureStrip>
       )}
 
       {all.length > 0 && (
@@ -253,7 +272,7 @@ export function MyPaymentsPage() {
                   Estimate #{estimateOf(p)} · {bankLabel(p.bankDepositedTo)} · <RelativeTime value={p.createdAt} />
                 </>
               }
-              badge={<StatusBadge status={p.status} label={STATUS_TEXT[p.status]} />}
+              badge={<PaymentStatusDot status={p.status} label={STATUS_TEXT[p.status]} />}
               note={p.status === 'rejected' && p.rejectionReason ? `Reason: ${p.rejectionReason}` : undefined}
             />
           )}

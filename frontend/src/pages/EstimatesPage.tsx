@@ -10,6 +10,7 @@ import { ServerResults, sortFromParam, sortToParam } from '../components/data/Se
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ResultsSkeleton } from '../components/ui/Skeletons';
+import { Avatar } from '../components/ui/Avatar';
 import { EmptyState, ErrorState } from '../components/ui/States';
 import { EstimateStatusBadge } from '../components/ui/StatusBadge';
 import { dayLabel, peso } from '../lib/format';
@@ -28,17 +29,46 @@ const TABS = [
 
 export const estimateNo = (e: Pick<EstimateRow, 'docNumber' | 'id'>) => e.docNumber || e.id;
 
+/** A stable number from the customer, so a customer keeps the same tint across pages. */
+const hashIndex = (id: string) => [...id].reduce((n, ch) => n + ch.charCodeAt(0), 0);
+
 const COLUMNS: Column<EstimateRow>[] = [
   { id: 'number', header: 'Estimate', sortable: true, pin: true, className: 'whitespace-nowrap font-semibold', cell: (e) => `#${estimateNo(e)}` },
-  { id: 'customer', header: 'Customer', sortable: true, cell: (e) => e.customerName ?? <span className="text-text-muted">—</span> },
+  {
+    id: 'customer',
+    header: 'Customer',
+    sortable: true,
+    cell: (e) =>
+      e.customerName ? (
+        <div className="flex items-center gap-3">
+          <Avatar name={e.customerName} index={hashIndex(e.customerId ?? e.customerName)} />
+          <span>{e.customerName}</span>
+        </div>
+      ) : (
+        <span className="text-text-muted">—</span>
+      ),
+  },
   { id: 'date', header: 'Date', sortable: true, className: 'whitespace-nowrap text-text-muted', cell: (e) => dayLabel(e.txnDate) },
   { id: 'status', header: 'Status', cell: (e) => <EstimateStatusBadge status={e.status} /> },
   { id: 'total', header: 'Total', align: 'right', sortable: true, cell: (e) => <span className="font-semibold">{peso(e.totalAmount)}</span> },
   {
     id: 'progress',
-    header: 'Paid',
-    className: 'w-72',
-    cell: (e) => <EstimateProgress compact total={e.totalAmount} approved={e.approvedAmount} pending={e.pendingAmount} />,
+    header: 'Left to collect',
+    className: 'w-[26rem]',
+    cell: (e) => {
+      const left = Math.max(0, e.totalAmount - e.approvedAmount - e.pendingAmount);
+      return (
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className={left === 0 ? 'text-text-muted' : 'font-semibold'}>{peso(left)}</span>
+            <span className="text-small whitespace-nowrap text-text-muted">
+              {peso(e.approvedAmount)} paid{e.pendingAmount > 0 ? ` · ${peso(e.pendingAmount)} pending` : ''}
+            </span>
+          </div>
+          <EstimateProgress.Bar total={e.totalAmount} approved={e.approvedAmount} pending={e.pendingAmount} />
+        </div>
+      );
+    },
   },
 ];
 const SORTABLE = COLUMNS.filter((c) => c.sortable).map((c) => c.id);
@@ -67,7 +97,11 @@ export default function EstimatesPage() {
     <div>
       <PageHeader
         title="Estimates"
-        description={data ? `Estimates from the last ${data.lookbackDays} days, with how much of each has been paid.` : undefined}
+        description={
+          data
+            ? `${data.counts.Accepted ?? 0} accepted and ${data.counts.Pending ?? 0} pending of ${data.counts.all ?? data.total} estimates from the last ${data.lookbackDays} days. The bar shows how much of each has been paid.`
+            : undefined
+        }
       />
 
       <FilterBar

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { UserCog } from 'lucide-react';
 import { useCustomers, useEstimates } from '../../api/crm';
@@ -14,6 +14,7 @@ import { bankLabel, peso } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { waiting } from '../../lib/review';
 import { DailyBars } from './DailyBars';
+import { Figure, FigureStrip } from './Figure';
 import { Row, Section, SectionEmpty } from './Section';
 import { FETCH_DAYS, WINDOW_DAYS, dayShort, elapsed, fetchFrom, summarise } from './overview';
 
@@ -122,7 +123,7 @@ export function ExecutiveDashboard() {
         </Section>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-card border border-border bg-border lg:grid-cols-4">
+      <FigureStrip className="mt-4 lg:grid-cols-4">
         <Figure
           label={`Reviewed, last ${WINDOW_DAYS} days`}
           loading={recent.isPending}
@@ -144,7 +145,7 @@ export function ExecutiveDashboard() {
           value={activeMembers}
           note={team.isError ? 'Could not load the team' : invites ? `${invites} ${invites === 1 ? 'invite' : 'invites'} not accepted yet` : 'All invites accepted'}
         />
-      </div>
+      </FigureStrip>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2 [&>section]:h-full">
@@ -199,35 +200,6 @@ export function ExecutiveDashboard() {
         </div>
       </div>
     </div>
-  );
-}
-
-/** A figure in the divided strip: label over value over a note. A link when it has somewhere to go. */
-function Figure({ label, value, note, to, loading }: { label: string; value: number | undefined; note?: ReactNode; to?: string; loading?: boolean }) {
-  const body = (
-    <>
-      <span className="block text-small text-text-muted">{label}</span>
-      {loading ? (
-        <span role="status" aria-label={`Loading ${label}`} className="block">
-          <Skeleton className="mt-1 h-7 w-12" />
-          <Skeleton className="mt-1.5 h-4 w-32" />
-        </span>
-      ) : (
-        <>
-          {/* The spaces keep the link's accessible name readable ("Active customers 18 ...") whatever the CSS does. */}{' '}
-          <span className="mt-1 block text-title font-semibold tabular-nums">{value ?? '—'}</span>{' '}
-          {note && <span className="mt-0.5 block text-small text-text-muted">{note}</span>}
-        </>
-      )}
-    </>
-  );
-  const cls = 'block bg-surface p-4 text-text no-underline';
-  return to ? (
-    <Link to={to} className={cn(cls, 'hover:bg-surface-sunk')}>
-      {body}
-    </Link>
-  ) : (
-    <div className={cls}>{body}</div>
   );
 }
 

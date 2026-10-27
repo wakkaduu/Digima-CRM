@@ -42,6 +42,19 @@ export function EstimateProgress({ total, approved, pending, compact = false }: 
   );
 }
 
+/** Just the bar: paid in the accent, awaiting review in grey. */
+function Bar({ total, approved, pending }: { total: number; approved: number; pending: number }) {
+  const pct = (n: number) => (total > 0 ? Math.min(100, Math.max(0, (n / total) * 100)) : 0);
+  const a = pct(approved);
+  return (
+    <span aria-hidden className="mt-1.5 flex h-1.5 overflow-hidden rounded-badge bg-surface-sunk">
+      <span className="bg-accent" style={{ width: `${a}%` }} />
+      <span className="bg-border-strong" style={{ width: `${Math.min(pct(pending), 100 - a)}%` }} />
+    </span>
+  );
+}
+EstimateProgress.Bar = Bar;
+
 function Part({ label, value }: { label: string; value: number }) {
   return (
     <div>

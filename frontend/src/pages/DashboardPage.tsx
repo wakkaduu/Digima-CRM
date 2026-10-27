@@ -20,15 +20,14 @@ export default function DashboardPage() {
   if (!me) return null;
   // The SuperAdmin overview is titled by what it is and carries its own header (the finding replaces the date).
   if (me.role === 'superadmin') return <ExecutiveDashboard />;
+  // Sales are titled the same way: the page says what it is and its finding replaces the date.
+  if (me.role === 'sales') return <SalesDashboard />;
   const first = me.name.split(/\s+/)[0];
 
   return (
     <div>
-      <PageHeader
-        title={`${greeting()}, ${first}`}
-        description={today()}
-      />
-      {me.role === 'admin' ? <AdminDashboard /> : <SalesDashboard />}
+      <PageHeader title={`${greeting()}, ${first}`} description={today()} />
+      <AdminDashboard />
     </div>
   );
 }

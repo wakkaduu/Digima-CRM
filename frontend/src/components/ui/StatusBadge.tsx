@@ -107,6 +107,13 @@ export function EstimateStatusBadge({ status, label }: { status?: string; label?
   return <StatusDot tone={ESTIMATE_TONE[status ?? ''] ?? 'neutral'}>{label ?? status ?? 'Unknown'}</StatusDot>;
 }
 
+const PAYMENT_TONE: Record<Status, Tone> = { pending: 'warning', approved: 'success', rejected: 'danger', voided: 'neutral', partial: 'warning', connected: 'success', disconnected: 'danger' };
+
+/** A payment's state in lists and tables: a dot plus the words, quieter than the bordered badge when most rows carry one. */
+export function PaymentStatusDot({ status, label }: { status: Status; label?: string }) {
+  return <StatusDot tone={PAYMENT_TONE[status]}>{label ?? STATUS[status].label}</StatusDot>;
+}
+
 /** A customer's active / inactive state. */
 export function ActiveBadge({ active }: { active: boolean }) {
   return <StatusDot tone={active ? 'success' : 'neutral'}>{active ? 'Active' : 'Inactive'}</StatusDot>;

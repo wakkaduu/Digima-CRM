@@ -55,7 +55,7 @@ describe('loading skeletons', () => {
   it('dashboards show placeholders for tiles and lists, then the data', async () => {
     mockApi({ 'GET /api/auth/me': [200, me('sales')] });
     renderWithProviders(<DashboardPage />, '/dashboard');
-    expect(await screen.findByRole('status', { name: 'Loading Awaiting review' })).toBeInTheDocument();
+    expect(await screen.findByRole('status', { name: 'Loading Posted to QuickBooks' })).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Loading recent payments' })).toBeInTheDocument();
   });
 });
