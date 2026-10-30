@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    // The ngrok tunnel used to test invites with someone outside this machine; Vite rejects unknown hosts otherwise.
+    allowedHosts: ['triapsidal-david-intuitional.ngrok-free.dev'],
     proxy: { '/api': { target: API_TARGET, changeOrigin: false } },
   },
   test: {

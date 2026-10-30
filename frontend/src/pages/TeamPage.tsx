@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Copy, Link2, UserPlus } from 'lucide-react';
+import { Copy, Link2, UserPlus, Users } from 'lucide-react';
 import { useMe } from '../api/auth';
 import { ApiError } from '../api/client';
 import { useAddMember, useReinvite, useTeam, useUpdateMember, type InviteResult } from '../api/users';
@@ -13,6 +13,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { ErrorState, Skeleton } from '../components/ui/States';
 import { Avatar } from '../components/ui/Avatar';
 import { Access } from '../components/team/Access';
+import { BulkInviteDialog } from '../components/team/BulkInviteDialog';
 import { useToast } from '../components/ui/Toast';
 import { Input, Select } from '../components/ui/controls';
 import { dateShort } from '../lib/format';
@@ -150,6 +151,7 @@ export default function TeamPage() {
   const reinvite = useReinvite();
   const toast = useToast();
   const [adding, setAdding] = useState(false);
+  const [addingMany, setAddingMany] = useState(false);
   const [deactivating, setDeactivating] = useState<TeamMember | null>(null);
   const [invite, setInvite] = useState<InviteResult | null>(null);
 
@@ -185,9 +187,14 @@ export default function TeamPage() {
         title="Team"
         description={summary}
         actions={
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            <UserPlus aria-hidden className="size-4" /> Add person
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setAddingMany(true)}>
+              <Users aria-hidden className="size-4" /> Add several
+            </Button>
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              <UserPlus aria-hidden className="size-4" /> Add person
+            </Button>
+          </div>
         }
       />
 
@@ -272,6 +279,7 @@ export default function TeamPage() {
       )}
 
       <AddPersonDialog open={adding} onClose={() => setAdding(false)} onInvited={setInvite} />
+      <BulkInviteDialog open={addingMany} onClose={() => setAddingMany(false)} />
       <InviteLinkDialog invite={invite} onClose={() => setInvite(null)} />
       <ConfirmDialog
         open={!!deactivating}
