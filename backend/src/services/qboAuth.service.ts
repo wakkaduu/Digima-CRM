@@ -28,12 +28,15 @@ export class SignInError extends Error {
     }
 }
 
-type CallbackParams = { code: string; state: string; realmId: string };
+/** The portal's company, plus any extra development sandboxes (QBO_EXTRA_REALM_IDS; always empty in production). */
+export const isAllowedRealm = (realmId: string) => realmId === env.QBO_REALM_ID || env.QBO_EXTRA_REALM_IDS.includes(realmId);
+
+type CallbackParams ={ code: string; state: string; realmId: string };
 
 /** The part both sign-in and connect share: exchange the code, verify the signed ID token, check the company. */
-async function verifyAuthorization(params: CallbackParams): Promise<{ tokens: any; sub: string }> {
+async function verifyAuthorization(params: CallbackParams): Promise<{ tokens: any; sub: string; realmId: string }> {
     // The query string is browser-supplied, so this is only an early exit; the company in the signed ID token decides below.
-    if (params.realmId !== env.QBO_REALM_ID) {
+    if (!isAllowedRealm(params.realmId)) {
         // Company ids are not secrets; seeing both makes "wrong company" easy to explain.
         console.warn(`QBO sign-in refused: the callback is for company ${params.realmId}, this portal serves ${env.QBO_REALM_ID} (QBO_REALM_ID).`);
         throw new SignInError('wrong_company');
@@ -78,16 +81,17 @@ async function verifyAuthorization(params: CallbackParams): Promise<{ tokens: an
 
     // The company the person actually authorised, from the signed token. The realmId in the URL could have been edited by
     // someone who authorised a different company, so it must not be what keeps outsiders out.
-    if (String(profile?.realmid ?? '') !== env.QBO_REALM_ID) {
+    const realmId = String(profile?.realmid ?? '');
+    if (!isAllowedRealm(realmId) || realmId !== params.realmId) {
         console.warn(`QBO sign-in refused: the ID token says company ${profile?.realmid ?? '(none)'} but the callback said ${params.realmId}; this portal serves ${env.QBO_REALM_ID}.`);
         throw new SignInError('wrong_company');
     }
-    return { tokens, sub };
+    return { tokens, sub, realmId };
 }
 
 /** Completes the OAuth redirect: verifies the Intuit identity, applies the invite if any, stores their QuickBooks tokens. */
 export async function signIn(params: CallbackParams, inviteHash?: string | null): Promise<User> {
-    const { tokens, sub } = await verifyAuthorization(params);
+    const { tokens, sub, realmId } = await verifyAuthorization(params);
 
     const decision = decideSignIn({
         sub,
@@ -126,7 +130,7 @@ export async function signIn(params: CallbackParams, inviteHash?: string | null)
     }
     if (!user) throw new SignInError('sign_in_failed');
 
-    await saveTokens(user.id, tokens, env.QBO_REALM_ID);
+    await saveTokens(user.id, tokens, realmId);
     return user;
 }
 
@@ -135,7 +139,7 @@ export async function signIn(params: CallbackParams, inviteHash?: string | null)
  * QuickBooks connection to their account, and links their Intuit login to it the first time.
  */
 export async function connect(params: CallbackParams, userId: string): Promise<User> {
-    const { tokens, sub } = await verifyAuthorization(params);
+    const { tokens, sub, realmId } = await verifyAuthorization(params);
     const user = await userModel.findById(userId);
     if (!user) throw new SignInError('sign_in_failed');
 
@@ -152,7 +156,7 @@ export async function connect(params: CallbackParams, userId: string): Promise<U
             throw err;
         }
     }
-    await saveTokens(linked.id, tokens, env.QBO_REALM_ID);
+    await saveTokens(linked.id, tokens, realmId);
     return linked;
 }
 

@@ -28,6 +28,11 @@ const schema = z.object({
     QBO_REDIRECT_URI: z.string().url(),
     // The one QuickBooks company this portal serves. Anyone signing in from another company is rejected.
     QBO_REALM_ID: z.string().regex(/^\d+$/, 'QBO_REALM_ID is the numeric company id shown in QuickBooks'),
+    // Development only: more companies allowed to connect (comma-separated), e.g. each co-developer's own sandbox company.
+    QBO_EXTRA_REALM_IDS: z.preprocess(
+        (v) => (v === '' || v === undefined ? [] : String(v).split(',').map((s) => s.trim()).filter(Boolean)),
+        z.array(z.string().regex(/^\d+$/, 'QBO_EXTRA_REALM_IDS must be comma-separated numeric company ids')),
+    ),
     // The operator's own Intuit id (the `sub` printed in the log by the first refused sign-in). It always signs in as
     // SuperAdmin, which lets the first account in and recovers a lockout. SUPERADMIN_EMAIL is only the label of that account.
     SUPERADMIN_QBO_SUB: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(1).optional()),
@@ -45,6 +50,9 @@ const schema = z.object({
     SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 chars'),
     DEFAULT_FEE_PERCENT: z.coerce.number().min(0).max(20).default(1.5), // pre-fills the approval screen's "apply fee" button
     ESTIMATE_LOOKBACK_DAYS: z.coerce.number().int().min(30).default(365),
+}).refine((v) => v.NODE_ENV !== 'production' || v.QBO_EXTRA_REALM_IDS.length === 0, {
+    path: ['QBO_EXTRA_REALM_IDS'],
+    message: 'QBO_EXTRA_REALM_IDS is for development sandboxes only; production serves the single QBO_REALM_ID',
 }).refine((v) => !v.SUPERADMIN_QBO_SUB || v.SUPERADMIN_EMAIL, {
     path: ['SUPERADMIN_EMAIL'],
     message: 'SUPERADMIN_EMAIL is required when SUPERADMIN_QBO_SUB is set (it labels the SuperAdmin account)',
