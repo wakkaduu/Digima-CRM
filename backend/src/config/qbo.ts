@@ -17,4 +17,12 @@ export const API_BASE =
         ? 'https://quickbooks.api.intuit.com'
         : 'https://sandbox-quickbooks.api.intuit.com';
 
+// The QuickBooks web app, for links that open a transaction there.
+const APP_BASE =
+    env.QBO_ENVIRONMENT === 'production'
+        ? 'https://app.qbo.intuit.com'
+        : 'https://app.sandbox.qbo.intuit.com';
+
+export const qboInvoiceUrl = (invoiceId: string) => `${APP_BASE}/app/invoice?txnId=${encodeURIComponent(invoiceId)}`;
+
 export { OAuthClient };

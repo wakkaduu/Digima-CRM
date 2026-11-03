@@ -430,8 +430,8 @@ export function SubmitPaymentPage() {
             </Field>
             {selected && invoiceCheck?.kind === 'none' && (
               <Message type="info">
-                QuickBooks has no invoice for this estimate yet. You can still submit, but an admin has to create the invoice
-                before this payment can be approved.
+                QuickBooks has no invoice for this estimate yet. You can still submit: the invoice is created when an admin
+                approves the first payment.
               </Message>
             )}
             {selected && invoiceCheck?.kind === 'paid' && (

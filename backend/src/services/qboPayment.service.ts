@@ -3,8 +3,9 @@ import env from '../config/env';
 import * as paymentModel from '../models/payment.model';
 import * as qbo from './qbo.service';
 import HttpError from '../utils/HttpError';
+import { createInvoiceFromEstimate, findTotalMismatch } from './qboInvoice';
 import { allocate, buildDepositBody, buildPaymentBody, fromCents, postingDate, toCents } from './qboPosting';
-import { voidPosted } from './qboVoid';
+import { isGone, voidPosted } from './qboVoid';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -19,7 +20,7 @@ const DEPOSIT_ACCOUNT_BY_BANK: Record<string, string | undefined> = {
 
 export { toCents, fromCents };
 
-/* Every invoice linked to the estimate (any balance), oldest first. Empty when nothing was invoiced yet. */
+/* The estimate and every invoice linked to it (any balance), oldest first. Empty when nothing was invoiced yet. */
 async function getLinkedInvoices(estimateId: string) {
     const estimate = await qbo.getEstimateById(estimateId);
     const invoiceIds = new Set(estimate.linkedInvoiceIds);
@@ -38,12 +39,32 @@ async function getLinkedInvoices(estimateId: string) {
         }
     }
 
+    // Invoices the portal already used for this estimate's other payments (covers a lagging LinkedTxn on the estimate).
+    for (const invoiceId of await paymentModel.findInvoiceIdsForEstimate(estimateId)) invoiceIds.add(invoiceId);
+
     const invoices: any[] = [];
     for (const invoiceId of invoiceIds) {
-        const json = await qbo.qboRequest(`/invoice/${invoiceId}`);
-        invoices.push(json.Invoice);
+        try {
+            const json = await qbo.qboRequest(`/invoice/${invoiceId}`);
+            invoices.push(json.Invoice);
+        } catch (err) {
+            if (!isGone(err)) throw err; // deleted in QuickBooks since: nothing to record against
+        }
     }
-    return invoices.sort((a: any, b: any) => String(a.TxnDate).localeCompare(String(b.TxnDate)));
+    invoices.sort((a: any, b: any) => String(a.TxnDate).localeCompare(String(b.TxnDate)));
+    return { estimateTotal: Number(estimate.totalAmount) || 0, invoices };
+}
+
+/* Stops an approval before any money is recorded; the invoice stays, so once corrected the next approval uses it. */
+function totalMismatchError(invoice: any, estimateTotal: number, justCreated: boolean) {
+    const name = `Invoice ${invoice.DocNumber ? `#${invoice.DocNumber} ` : ''}`;
+    const totals = `(${fromCents(toCents(invoice.TotalAmt)).toFixed(2)}) does not match the estimate (${estimateTotal.toFixed(2)})`;
+    return new HttpError(
+        409,
+        (justCreated ? `${name}was created in QuickBooks, but its total ${totals}, usually because of tax.` : `${name}in QuickBooks: its total ${totals}.`) +
+            ' Correct the invoice (or the estimate) in QuickBooks, then approve again. No payment was recorded.',
+        { code: 'INVOICE_TOTAL_MISMATCH', invoiceNumber: invoice.DocNumber ?? null }
+    );
 }
 
 export interface InvoiceSummary {
@@ -58,7 +79,7 @@ export interface InvoiceSummary {
 
 /** What QuickBooks says about the invoices created from an estimate. */
 export async function getInvoiceSummary(estimateId: string): Promise<InvoiceSummary> {
-    const invoices = (await getLinkedInvoices(estimateId)).map((i: any) => ({
+    const invoices = (await getLinkedInvoices(estimateId)).invoices.map((i: any) => ({
         id: String(i.Id),
         docNumber: i.DocNumber ?? null,
         txnDate: i.TxnDate,
@@ -72,27 +93,66 @@ export async function getInvoiceSummary(estimateId: string): Promise<InvoiceSumm
     return { invoices, total: fromCents(total), balance: fromCents(balance), paid: fromCents(total - balance) };
 }
 
-/* Invoices linked to the estimate that still have a balance (oldest first). */
-async function getOpenInvoices(estimateId: string) {
-    const invoices = await getLinkedInvoices(estimateId);
+// Serialises "look for an invoice, else create one" per estimate, so two payments approved at the same moment cannot
+// both find nothing and each create an invoice. In-process only, like the per-payment lock in admin.controller.ts.
+const estimateLocks = new Map<string, Promise<unknown>>();
 
-    if (!invoices.length) {
-        throw new HttpError(
-            409,
-            'No invoice is linked to this estimate yet. In QuickBooks, open the estimate and choose "Create invoice", then approve again.',
-            { code: 'NO_INVOICE' }
-        );
+async function withEstimateLock<T>(estimateId: string, fn: () => Promise<T>): Promise<T> {
+    const previous = estimateLocks.get(estimateId) ?? Promise.resolve();
+    const run = previous.catch(() => undefined).then(fn);
+    const tail = run.catch(() => undefined);
+    estimateLocks.set(estimateId, tail);
+    try {
+        return await run;
+    } finally {
+        if (estimateLocks.get(estimateId) === tail) estimateLocks.delete(estimateId);
     }
+}
 
-    const open = invoices.filter((i: any) => toCents(i.Balance) > 0);
-    if (!open.length) {
-        throw new HttpError(
-            409,
-            'The invoice linked to this estimate is already fully paid in QuickBooks.',
-            { code: 'INVOICE_PAID' }
-        );
-    }
-    return open;
+/*
+ * Open invoices (balance > 0, oldest first) for the estimate. The first approved payment creates the invoice for the
+ * full estimate; every later one finds it again and is recorded against it. An invoice made by hand in QuickBooks is
+ * found the same way.
+ */
+async function getOrCreateOpenInvoices(estimateId: string) {
+    return withEstimateLock(estimateId, async () => {
+        const linked = await getLinkedInvoices(estimateId);
+        let invoices = linked.invoices;
+        let created = false;
+
+        const mismatched = findTotalMismatch(invoices, linked.estimateTotal);
+        if (mismatched) throw totalMismatchError(mismatched, linked.estimateTotal, false);
+
+        if (!invoices.length) {
+            let result: Awaited<ReturnType<typeof createInvoiceFromEstimate>>;
+            try {
+                result = await createInvoiceFromEstimate(qbo.qboRequest, estimateId);
+            } catch (err) {
+                // Auth problems must reach the admin as they are (reconnect QuickBooks), not as an invoice failure.
+                if (err instanceof HttpError && err.status !== 502) throw err;
+                console.error(`[qbo] could not create the invoice for estimate ${estimateId}`, err);
+                throw new HttpError(
+                    409,
+                    "QuickBooks couldn't create the invoice for this estimate. In QuickBooks, open the estimate and choose \"Create invoice\", then approve again.",
+                    { code: 'INVOICE_CREATE_FAILED' }
+                );
+            }
+            const { invoice, estimateTotal, matchesEstimate } = result;
+            if (!matchesEstimate) throw totalMismatchError(invoice, estimateTotal, true);
+            invoices = [invoice];
+            created = true;
+        }
+
+        const open = invoices.filter((i: any) => toCents(i.Balance) > 0);
+        if (!open.length) {
+            throw new HttpError(
+                409,
+                'The invoice linked to this estimate is already fully paid in QuickBooks.',
+                { code: 'INVOICE_PAID' }
+            );
+        }
+        return { open, created };
+    });
 }
 
 /*
@@ -124,6 +184,10 @@ export async function pushToQbo({
 
     let paymentId = payment.qboPaymentId;
     let depositId = payment.qboDepositId;
+    let invoiceId = payment.qboInvoiceId;
+    let invoiceCreated = false;
+    // DocNumber is what people see and search for in QuickBooks; Id is internal and not searchable.
+    let invoiceNumber = payment.qboInvoiceNumber;
     let unappliedCents = 0;
     const txnDate = postingDate(payment.receivedOn);
     const note =
@@ -132,7 +196,12 @@ export async function pushToQbo({
 
     /* Step 1: Payment (gross) applied to the invoice(s) */
     if (!paymentId) {
-        const invoices = await getOpenInvoices(payment.qboEstimateId);
+        const { open: invoices, created } = await getOrCreateOpenInvoices(payment.qboEstimateId);
+        invoiceCreated = created;
+        // Saved at once so a retry (and the next payment on this estimate) can find the invoice.
+        invoiceId = String(invoices[0].Id);
+        invoiceNumber = invoices[0].DocNumber ?? null;
+        await paymentModel.update(payment.id, { qboInvoiceId: invoiceId, qboInvoiceNumber: invoiceNumber });
         const { lines, unappliedCents: leftover } = allocate(invoices, grossCents);
         unappliedCents = leftover;
 
@@ -177,7 +246,7 @@ export async function pushToQbo({
         await paymentModel.update(payment.id, { qboDepositId: depositId });
     }
 
-    return { paymentId, depositId, feeCents, unappliedCents };
+    return { paymentId, depositId, invoiceId, invoiceNumber, invoiceCreated, feeCents, unappliedCents };
 }
 
 /* Reverses an approved payment in QuickBooks (see qboVoid.ts). */

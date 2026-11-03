@@ -35,6 +35,8 @@ const payment = (over: Partial<Payment> = {}) =>
         salesSeenAt: null,
         qboPaymentId: null,
         qboDepositId: null,
+        qboInvoiceId: null,
+        qboInvoiceNumber: null,
         qboCustomerId: null,
         proofImageUrl: 'https://res.cloudinary.com/x/image/authenticated/v1/a.jpg',
         proofPublicId: 'a',
@@ -130,7 +132,11 @@ test('audit trail: submitted, then the review with who, when and why', () => {
 test('detail: fee is computed, QuickBooks ids are admin only', () => {
     const p = payment({ status: 'approved', finalAmount: '2462.5' as any, approvedAt: new Date(), approvedBy: 'Ana', qboPaymentId: '77', qboDepositId: '78' });
     assert.equal((toDetail(p, 'admin') as any).fee, 37.5);
-    assert.deepEqual((toDetail(p, 'admin') as any).qbo, { paymentId: '77', depositId: '78', customerId: null });
+    assert.deepEqual((toDetail(p, 'admin') as any).qbo, { paymentId: '77', depositId: '78', invoiceId: null, invoiceNumber: null, invoiceUrl: null, customerId: null });
+    // The invoice it was recorded against: the number people search for, plus a link that opens it in QuickBooks.
+    const invoiced = (toDetail({ ...p, qboInvoiceId: '146', qboInvoiceNumber: '1039' }, 'admin') as any).qbo;
+    assert.equal(invoiced.invoiceNumber, '1039');
+    assert.match(invoiced.invoiceUrl, /^https:\/\/app\.(sandbox\.)?qbo\.intuit\.com\/app\/invoice\?txnId=146$/);
     assert.equal('qbo' in toDetail(p, 'sales'), false);
 });
 

@@ -66,6 +66,8 @@ export const approve = asyncHandler(async (req, res) => {
             reviewedById: req.user.id,
             qboPaymentId: result.paymentId,
             qboDepositId: result.depositId || null,
+            qboInvoiceId: result.invoiceId,
+            qboInvoiceNumber: result.invoiceNumber,
         });
 
         res.json({
@@ -73,6 +75,9 @@ export const approve = asyncHandler(async (req, res) => {
             qbo: {
                 paymentId: result.paymentId,
                 depositId: result.depositId,
+                invoiceId: result.invoiceId,
+                invoiceNumber: result.invoiceNumber,
+                invoiceCreated: result.invoiceCreated,
                 fee: fromCents(result.feeCents),
                 unappliedCredit: fromCents(result.unappliedCents),
             },

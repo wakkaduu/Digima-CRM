@@ -1,7 +1,7 @@
 /** Why the backend sent the browser back from QuickBooks (see GET /api/auth/qbo/callback), as ?error=<code>. */
 export const SIGN_IN_ERRORS: Record<string, string> = {
   access_denied: 'Sign-in was cancelled. You can try again whenever you are ready.',
-  not_authorized: 'This QuickBooks login has not been invited yet. Ask a SuperAdmin for an invite link, open it, then sign in. Or log in with your email and password.',
+  not_authorized: 'This QuickBooks login has not been invited yet. Ask a SuperAdmin for an invite link, open it, then sign in.',
   invite_invalid: 'That invite link is not valid, has expired, or was already used. Ask a SuperAdmin for a new one.',
   already_linked: 'That QuickBooks login already belongs to another account, so it cannot be used here. Use the login you were invited with, or ask a SuperAdmin for help.',
   login_mismatch: 'That is not the QuickBooks login linked to your account. Sign in to QuickBooks with the same login you used before.',

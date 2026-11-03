@@ -17,6 +17,8 @@ declare module 'intuit-oauth' {
         authorizeUri(opts: { scope: string[]; state?: string }): string;
         createToken(url: string): Promise<AuthResponse>;
         refreshUsingToken(refreshToken: string): Promise<AuthResponse>;
+        /** Revokes the given token at Intuit (a refresh token also ends the access tokens issued from it). */
+        revoke(params: { access_token?: string; refresh_token?: string }): Promise<AuthResponse>;
         /** Checks issuer, audience, expiry and signature of the id_token from the last createToken() call. */
         validateIdToken(): Promise<boolean>;
     }

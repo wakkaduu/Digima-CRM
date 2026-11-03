@@ -1,3 +1,5 @@
+import { reportMaintenance } from '../lib/maintenance';
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -29,6 +31,7 @@ export async function api<T>(path: string, options: RequestInit & { json?: unkno
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 503 && data?.error?.details?.code === 'MAINTENANCE') reportMaintenance(data.error.details);
     throw new ApiError(data?.error?.message || res.statusText, res.status, data?.error?.details?.code);
   }
   return data as T;
@@ -92,6 +95,7 @@ export function apiUpload<T>(
       finish();
       const data = xhr.response ?? {};
       if (xhr.status >= 200 && xhr.status < 300) return resolve(data as T);
+      if (xhr.status === 503 && data?.error?.details?.code === 'MAINTENANCE') reportMaintenance(data.error.details);
       reject(new ApiError(data?.error?.message || xhr.statusText, xhr.status, data?.error?.details?.code));
     };
     xhr.onerror = () => fail(LOST, 'NETWORK');

@@ -2,6 +2,7 @@ import type { User } from '@prisma/client';
 import env from '../config/env';
 import { OAuthClient, createOAuthClient } from '../config/qbo';
 import * as userModel from '../models/user.model';
+import * as qboTokenModel from '../models/qboToken.model';
 import { saveTokens } from './qbo.service';
 import { decideConnect, decideSignIn, type SignInFailure } from './signInDecision';
 
@@ -135,7 +136,7 @@ export async function signIn(params: CallbackParams, inviteHash?: string | null)
 }
 
 /**
- * "Connect QuickBooks" for someone who is already signed in (typically by email and password): attaches their own
+ * "Connect QuickBooks" for someone who is already signed in (to renew or replace their connection): attaches their own
  * QuickBooks connection to their account, and links their Intuit login to it the first time.
  */
 export async function connect(params: CallbackParams, userId: string): Promise<User> {
@@ -158,6 +159,22 @@ export async function connect(params: CallbackParams, userId: string): Promise<U
     }
     await saveTokens(linked.id, tokens, realmId);
     return linked;
+}
+
+/**
+ * "Disconnect QuickBooks": asks Intuit to revoke the user's refresh token, then forgets it. The local copy is deleted even
+ * if Intuit cannot be reached or says the token is already dead, so the user is never stuck "connected" to something unusable.
+ */
+export async function disconnect(userId: string): Promise<void> {
+    const row = await qboTokenModel.get(userId);
+    if (!row) return;
+    try {
+        await createOAuthClient().revoke({ refresh_token: row.refreshToken });
+    } catch (err: any) {
+        // Tokens are never logged: only what Intuit said went wrong.
+        console.warn(`QBO disconnect: Intuit did not confirm the revocation for user ${userId}:`, err.originalMessage || err.message);
+    }
+    await qboTokenModel.remove(userId);
 }
 
 /** SUPERADMIN_QBO_SUB: finds or creates the SuperAdmin account (labelled with SUPERADMIN_EMAIL) and makes sure it is usable. */

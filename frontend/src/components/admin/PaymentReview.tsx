@@ -65,7 +65,7 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
   const approve = useMutation({
     mutationFn: () => api<ApproveResult>(`/api/payments/approve/${p.id}`, { method: 'POST', json: { finalAmount } }),
     onSuccess: ({ qbo }) => {
-      let text = `Approved ${p.customerName} and posted to QuickBooks (payment #${qbo.paymentId}${qbo.depositId ? `, deposit #${qbo.depositId}` : ''}).`;
+      let text = `Approved ${p.customerName} and posted to QuickBooks (${qbo.invoiceCreated ? (qbo.invoiceNumber ? `invoice #${qbo.invoiceNumber} created, ` : 'invoice created, ') : ''}payment #${qbo.paymentId}${qbo.depositId ? `, deposit #${qbo.depositId}` : ''}).`;
       if (qbo.unappliedCredit > 0) {
         text += ` ${peso(qbo.unappliedCredit)} was more than the invoice balance and stays as unapplied credit in QuickBooks.`;
       }
@@ -83,9 +83,11 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
           text: 'The QuickBooks connection expired. Reconnect it, then approve again.',
           action: { label: 'Reconnect', onClick: () => navigate('/settings/integrations') },
         });
-      } else if (err instanceof ApiError && err.code === 'NO_INVOICE') {
-        // Not a failure of the portal: the admin has one step to do in QuickBooks first.
+      } else if (err instanceof ApiError && (err.code === 'INVOICE_CREATE_FAILED' || err.code === 'NO_INVOICE')) {
+        // The portal creates the invoice itself; if QuickBooks refused, the admin makes it by hand and approves again.
         toast({ type: 'warning', title: 'Create the invoice in QuickBooks first', text: err.message });
+      } else if (err instanceof ApiError && err.code === 'INVOICE_TOTAL_MISMATCH') {
+        toast({ type: 'warning', title: 'Check the invoice in QuickBooks', text: err.message });
       } else {
         toast({ type: 'error', title: 'Could not approve', text: err.message });
       }
@@ -148,7 +150,7 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
       ? 'The final amount cannot be more than the amount paid.'
       : null;
   const feeLine = amounts.ok
-    ? `Bank fee ${peso(amounts.feeC / 100)} (${amounts.feePercent.toFixed(2)}%). The invoice is closed for the full ${peso(amounts.grossC / 100)}.`
+    ? `Bank fee ${peso(amounts.feeC / 100)} (${amounts.feePercent.toFixed(2)}%). The full ${peso(amounts.grossC / 100)} is applied to the invoice.`
     : null;
 
   return (
@@ -177,9 +179,9 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
         )}
 
         {invoiceCheck?.kind === 'none' && (
-          <Message type="warning" className="mb-0">
-            QuickBooks has no invoice for this estimate yet. Create it in QuickBooks (open the estimate, choose Create invoice) before
-            you approve, or approval will stop.
+          <Message type="info" className="mb-0">
+            QuickBooks has no invoice for this estimate yet. Approving creates one for the full estimate and records this payment
+            against it.
           </Message>
         )}
         {invoiceCheck?.kind === 'paid' && (

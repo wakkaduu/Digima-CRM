@@ -29,8 +29,8 @@ const safeEqual = (a: unknown, b: unknown) => {
 };
 
 // GET /api/auth/qbo/login?next=/some/path[&mode=connect]   (public; connect needs a signed-in user)
-// Without `mode`, this is "Sign in with QuickBooks". With mode=connect, a user who is already signed in (typically by
-// email and password) attaches their own QuickBooks connection to their account.
+// Without `mode`, this is "Sign in with QuickBooks". With mode=connect, a user who is already signed in attaches their
+// own (new or renewed) QuickBooks connection to their account.
 export const login = asyncHandler(async (req, res) => {
     const state = crypto.randomBytes(16).toString('hex');
     const next = safeNextSchema.safeParse(req.query.next);
@@ -98,6 +98,12 @@ export const callback = asyncHandler(async (req, res) => {
         throw err;
     }
     res.redirect(`${env.FRONTEND_URL}${next || '/'}`);
+});
+
+// POST /api/auth/qbo/disconnect   (signed in: removes their own QuickBooks connection and revokes it at Intuit)
+export const disconnect = asyncHandler(async (req, res) => {
+    await qboAuth.disconnect(req.user.id);
+    res.json({ ok: true });
 });
 
 // GET /api/auth/qbo/status   (any signed-in user: their own connection)

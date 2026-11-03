@@ -1,5 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { Route, Routes } from 'react-router';
 import { LoginPage } from './LoginPage';
 import { mockApi, renderWithProviders } from '../test/renderWithProviders';
@@ -12,67 +11,22 @@ const page = (
   </Routes>
 );
 const signedOut = { 'GET /api/auth/me': [200, { user: null }] as [number, unknown] };
-const user = { id: '1', name: 'Ann', email: 'a@b.co', role: 'admin', hasPassword: true };
+const user = { id: '1', name: 'Ann', email: 'a@b.co', role: 'admin', hasPassword: false };
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('LoginPage', () => {
-  it('offers email and password, and Sign in with QuickBooks', async () => {
+  it('offers Sign in with QuickBooks and nothing else: no email or password fields', async () => {
     mockApi(signedOut);
     renderWithProviders(page, '/login');
 
-    expect(await screen.findByLabelText('Email address')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Sign in with QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login');
+    expect(await screen.findByRole('link', { name: /Sign in with QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login');
+    expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('shows field errors and does not call the API when the form is empty', async () => {
-    const fetchMock = mockApi(signedOut);
-    renderWithProviders(page, '/login');
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
-
-    expect(await screen.findByText(/Enter your email address, for example/)).toBeInTheDocument();
-    expect(screen.getByText('Enter your password.')).toBeInTheDocument();
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
-  });
-
-  it('shows the server error for a wrong password', async () => {
-    mockApi({ ...signedOut, 'POST /api/auth/login': [401, { error: { message: 'Incorrect email or password.' } }] });
-    renderWithProviders(page, '/login');
-
-    await userEvent.type(await screen.findByLabelText('Email address'), 'a@b.co');
-    await userEvent.type(screen.getByLabelText('Password'), 'wrong');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
-  });
-
-  it('signs in with email and goes to the dashboard', async () => {
-    const fetchMock = mockApi({ ...signedOut, 'POST /api/auth/login': [200, { user }] });
-    renderWithProviders(page, '/login');
-
-    await userEvent.type(await screen.findByLabelText('Email address'), '  a@b.co ');
-    await userEvent.type(screen.getByLabelText('Password'), 'secret-password');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-
-    await waitFor(() => expect(screen.getByText('Dashboard screen')).toBeInTheDocument());
-    const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
-    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ email: 'a@b.co', password: 'secret-password' });
-  });
-
-  it('returns to the page the visitor was heading to', async () => {
-    mockApi({ ...signedOut, 'POST /api/auth/login': [200, { user }] });
-    renderWithProviders(page, '/login?next=%2Fcustomers');
-
-    await userEvent.type(await screen.findByLabelText('Email address'), 'a@b.co');
-    await userEvent.type(screen.getByLabelText('Password'), 'secret-password');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-
-    expect(await screen.findByText('Customers screen')).toBeInTheDocument();
-  });
-
-  it('keeps the return path on the QuickBooks button, and ignores one that leaves the site', async () => {
+  it('keeps the return path on the QuickBooks button', async () => {
     mockApi(signedOut);
     renderWithProviders(page, '/login?next=%2Fcustomers');
     expect(await screen.findByRole('link', { name: /Sign in with QuickBooks/ })).toHaveAttribute('href', '/api/auth/qbo/login?next=%2Fcustomers');
@@ -88,6 +42,7 @@ describe('LoginPage', () => {
     mockApi(signedOut);
     const first = renderWithProviders(page, '/login?error=not_authorized');
     expect(await screen.findByRole('alert')).toHaveTextContent('has not been invited yet');
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/password/i);
     first.unmount();
 
     renderWithProviders(page, '/login?error=whatever');

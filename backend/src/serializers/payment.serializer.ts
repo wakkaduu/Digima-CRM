@@ -1,4 +1,5 @@
 import type { Payment } from '@prisma/client';
+import { qboInvoiceUrl } from '../config/qbo';
 import { RECEIPT_WIDTHS } from '../validators/payment.validator';
 
 type Role = 'admin' | 'sales';
@@ -72,6 +73,17 @@ export function toDetail(p: Payment, role: Role) {
         ...toListItem(p, role),
         fee,
         events: auditEvents(p),
-        ...(role === 'admin' ? { qbo: { paymentId: p.qboPaymentId, depositId: p.qboDepositId, customerId: p.qboCustomerId } } : {}),
+        ...(role === 'admin'
+            ? {
+                  qbo: {
+                      paymentId: p.qboPaymentId,
+                      depositId: p.qboDepositId,
+                      invoiceId: p.qboInvoiceId,
+                      invoiceNumber: p.qboInvoiceNumber,
+                      invoiceUrl: p.qboInvoiceId ? qboInvoiceUrl(p.qboInvoiceId) : null,
+                      customerId: p.qboCustomerId,
+                  },
+              }
+            : {}),
     };
 }

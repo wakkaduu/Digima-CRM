@@ -2,12 +2,31 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight } from 'lucide-react';
 
-/** A titled dashboard block with an optional "view all" link. Rows inside it are separated by hairlines. */
-export function Section({ title, to, linkLabel = 'View all', children }: { title: string; to?: string; linkLabel?: string; children: ReactNode }) {
+/**
+ * A titled dashboard block with an optional "view all" link, or `meta` (a period, a total) in grey on the right.
+ * Rows inside it are separated by hairlines.
+ */
+export function Section({
+  title,
+  to,
+  linkLabel = 'View all',
+  meta,
+  footer,
+  children,
+}: {
+  title: string;
+  to?: string;
+  linkLabel?: string;
+  meta?: ReactNode;
+  /** A total or an action, pinned to the foot when the block is stretched to its neighbour's height. */
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section className="overflow-hidden rounded-card border border-border bg-surface" aria-label={title}>
+    <section className="flex flex-col overflow-hidden rounded-card border border-border bg-surface" aria-label={title}>
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-4">
         <h2 className="text-body font-semibold">{title}</h2>
+        {meta && !to && <span className="text-small text-text-muted tabular-nums">{meta}</span>}
         {to && (
           <Link to={to} className="inline-flex min-h-6 items-center gap-1 text-accent underline pointer-coarse:min-h-11">
             {linkLabel} <ArrowRight aria-hidden className="size-3.5" />
@@ -15,6 +34,7 @@ export function Section({ title, to, linkLabel = 'View all', children }: { title
         )}
       </header>
       <div className="divide-y divide-border">{children}</div>
+      {footer && <div className="mt-auto border-t border-border">{footer}</div>}
     </section>
   );
 }
@@ -45,4 +65,16 @@ export function Row({ to, title, amount, detail, badge }: { to?: string; title: 
 
 export function SectionEmpty({ children }: { children: ReactNode }) {
   return <p className="px-4 py-6 text-center text-text-muted">{children}</p>;
+}
+
+/** A block that failed says what and offers a retry, inside its own frame. */
+export function BlockError({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <p role="alert" className="px-4 py-6 text-text-muted">
+      Could not load {what}.{' '}
+      <button type="button" onClick={onRetry} className="min-h-6 cursor-pointer text-accent underline">
+        Retry
+      </button>
+    </p>
+  );
 }

@@ -44,7 +44,9 @@ model Payment {
   qboCustomerId   String?   @map("qbo_customer_id")
   qboPaymentId    String?   @unique @map("qbo_payment_id") // set after successful QBO push; prevents double-posting
   qboDepositId    String?   @map("qbo_deposit_id")
-  approvedBy      String?   @map("approved_by")
+  qboInvoiceId    String?   @map("qbo_invoice_id") // invoice this payment was recorded against (created on first approval)
+  qboInvoiceNumber String?  @map("qbo_invoice_number") // that invoice's DocNumber: what people see and search for in QBO
+  approvedBy     String?   @map("approved_by")
   approvedAt      DateTime? @map("approved_at")
   rejectionReason String?   @map("rejection_reason")
   voidedAt        DateTime? @map("voided_at")

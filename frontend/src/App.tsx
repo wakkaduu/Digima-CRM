@@ -8,6 +8,11 @@ import { InvitePage } from './pages/InvitePage';
 import { PasswordPage } from './pages/PasswordPage';
 import { ForbiddenPage, NotFoundPage } from './pages/NotFoundPage';
 import { SubmitPaymentPage } from './pages/SubmitPaymentPage';
+import { DisconnectedPage } from './pages/DisconnectedPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
+import { MaintenancePage } from './pages/MaintenancePage';
+import { useMaintenance } from './lib/maintenance';
 
 // Admin and SuperAdmin screens are split out of the main bundle.
 const AdminPendingPage = lazy(() => import('./pages/AdminPendingPage'));
@@ -18,6 +23,7 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage'));
 const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'));
 const EstimatesPage = lazy(() => import('./pages/EstimatesPage'));
 const EstimateDetailPage = lazy(() => import('./pages/EstimateDetailPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 
 /** Old URLs keep working: bookmarks, and the OAuth redirect URL that QuickBooks may still hold. */
 function Redirect({ to }: { to: (id?: string) => string }) {
@@ -27,11 +33,18 @@ function Redirect({ to }: { to: (id?: string) => string }) {
 }
 
 export function App() {
+  const maintenance = useMaintenance();
+  if (maintenance) return <MaintenancePage info={maintenance} />;
+
   return (
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/invite" element={<InvitePage />} />
+        {/* Public: Intuit and anyone else must be able to read these without an account. */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/disconnect" element={<DisconnectedPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/password" element={<PasswordPage />} />
           <Route path="/403" element={<ForbiddenPage />} />
@@ -61,6 +74,7 @@ export function App() {
         </Route>
         {/* SuperAdmin: who may sign in, and as what. */}
         <Route element={<RequireAuth roles={['superadmin']} />}>
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings/team" element={<TeamPage />} />
         </Route>
       </Routes>

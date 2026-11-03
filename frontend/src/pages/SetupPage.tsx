@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link2, RefreshCw, FlaskConical } from 'lucide-react';
+import { Link2, RefreshCw, FlaskConical, Unlink } from 'lucide-react';
 import { api } from '../api/client';
 import { QBO_REAUTH_KEY, QBO_STATUS_KEY } from '../api/qbo';
 import type { Estimate, QboStatus } from '../api/types';
@@ -63,6 +63,15 @@ export default function SetupPage() {
       const t0 = performance.now();
       const raw = await api<{ estimates?: Estimate[] }>('/api/qbo/estimates?refresh=true');
       return { count: raw.estimates?.length ?? 0, ms: Math.round(performance.now() - t0), raw };
+    },
+  });
+
+  // Revokes the connection at Intuit and deletes the stored tokens; reconnecting is one click.
+  const disconnect = useMutation({
+    mutationFn: () => api('/api/auth/qbo/disconnect', { method: 'POST' }),
+    onSuccess: () => {
+      qc.setQueryData(QBO_REAUTH_KEY, false);
+      return qc.invalidateQueries({ queryKey: ['qbo', 'status'] });
     },
   });
 
@@ -141,7 +150,14 @@ export default function SetupPage() {
               <RefreshCw aria-hidden className="size-4" />
               Check again
             </Button>
+            {s?.realmId && (
+              <Button loading={disconnect.isPending} onClick={() => disconnect.mutate()}>
+                <Unlink aria-hidden className="size-4" />
+                Disconnect QuickBooks
+              </Button>
+            )}
           </div>
+          {disconnect.isError && <Message type="error" className="mb-0">Could not disconnect: {disconnect.error.message}</Message>}
 
           <p className="text-small text-text-muted">The connection is created when you sign in. What you can see and post follows your QuickBooks permissions.</p>
         </Card>

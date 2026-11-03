@@ -71,16 +71,16 @@ JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP 
 
 ## 2. Authentication & sessions
 
-- **Two ways in:** email and password (`POST /api/auth/login`), or **Sign in with QuickBooks** (Intuit OpenID Connect). Either creates a signed **cookie session** `pp_session` (`httpOnly`, `sameSite=lax`, `secure` in production, **8 h** lifetime).
+- **One way in:** **Sign in with QuickBooks** (Intuit OpenID Connect). There is no email/password login. It creates a signed **cookie session** `pp_session` (`httpOnly`, `sameSite=lax`, `secure` in production, **8 h** lifetime).
 - Browser clients must send credentials (`fetch(..., { credentials: 'include' })`) or use the Vite proxy so the cookie is same-origin. No CORS middleware is installed.
 - There is **no CSRF token**; protection relies on `sameSite=lax` and JSON/multipart bodies. Keep that in mind if cross-site embedding is ever introduced.
 - On every protected request the user is **re-read from the database**, so deactivation and role changes take effect immediately (a deactivated user's session is cleared).
 - Roles: `sales`, `admin`, `superadmin`. Roles are **strict, not hierarchical** — each route lists who may call it. SuperAdmin manages accounts, sees reports and can read everything admins can read (all payments, receipts, customers, estimates), but does not submit or approve payments.
-- **People join by invite link.** The production Intuit app only returns the verified Intuit id (`sub`), so QuickBooks accounts are linked to that id, never matched by email. A SuperAdmin adds `{name, email, role}` (`POST /api/users`; the email is only a label) and gets a one-time link `{FRONTEND_URL}/invite#<token>` (valid 7 days; the token is in the URL fragment so it never reaches server logs, and only its SHA-256 is stored). The person opens it and uses it one of two ways: **sign in with QuickBooks** (`POST /api/auth/invite` remembers the link for this browser, then their Intuit id is linked to the account), or **set a password** (`POST /api/auth/invite/password {token, password}`, then they log in with the account's email and that password; also how a forgotten password is reset, and how a SuperAdmin sets their own first password). After that a plain sign-in works. An Intuit id nobody invited is refused. `POST /api/users/:id/invite` issues a replacement link (lost/expired, or a different Intuit login).
+- **People join by invite link.** The production Intuit app only returns the verified Intuit id (`sub`), so QuickBooks accounts are linked to that id, never matched by email. A SuperAdmin adds `{name, email, role}` (`POST /api/users`; the email is only a label) and gets a one-time link `{FRONTEND_URL}/invite#<token>` (valid 7 days; the token is in the URL fragment so it never reaches server logs, and only its SHA-256 is stored). The person opens it and **signs in with QuickBooks** (`POST /api/auth/invite` remembers the link for this browser, then their Intuit id is linked to the account). After that a plain sign-in works. An Intuit id nobody invited is refused. `POST /api/users/:id/invite` issues a replacement link (lost/expired, or a different Intuit login).
 - **One company.** Only sign-ins from the QuickBooks company `QBO_REALM_ID` are accepted.
 - **First SuperAdmin.** Leave `SUPERADMIN_QBO_SUB` empty, attempt one sign-in (it is refused and the log prints `unknown Intuit id <sub>`), put that value in `SUPERADMIN_QBO_SUB` and restart. That Intuit login always signs in as SuperAdmin (creating or repairing the account labelled `SUPERADMIN_EMAIL`), which also recovers a lockout.
-- **Email logins connect QuickBooks themselves.** Someone who signs in by email has no QuickBooks connection until they click **Connect QuickBooks** (`GET /api/auth/qbo/login?mode=connect`, signed in only): the same Intuit sign-in, but the result is attached to the signed-in account (and its Intuit login is linked the first time). Until then QuickBooks routes return `409 QBO_NOT_CONNECTED`. An Intuit login that belongs to another account, or a different login than the one already linked, is refused (`already_linked` / `login_mismatch`; the browser returns to `/settings/integrations?error=<code>`).
-- Email login: `POST /api/auth/login` (20 per 15 min per IP). Passwords are 10-200 characters, hashed with scrypt. Accounts with an old temporary password (`must_change_password`) are refused with `PASSWORD_RESET_REQUIRED` until a SuperAdmin sends an invite link. `POST /api/auth/change-password` (signed in) changes your own.
+- **Renewing or replacing the QuickBooks connection.** A signed-in user can click **Connect QuickBooks** (`GET /api/auth/qbo/login?mode=connect`, signed in only): the same Intuit sign-in, but the result is attached to the signed-in account (and its Intuit login is linked the first time). Without a connection, QuickBooks routes return `409 QBO_NOT_CONNECTED`. An Intuit login that belongs to another account, or a different login than the one already linked, is refused (`already_linked` / `login_mismatch`; the browser returns to `/settings/integrations?error=<code>`).
+- `POST /api/auth/change-password` remains only for accounts that still hold an old password hash; those hashes can no longer be used to sign in.
 - **Per-user QuickBooks tokens.** Every user's own QuickBooks tokens are stored (`qbo_tokens`, keyed by user) and every QuickBooks call runs as the signed-in user, so QuickBooks' own permissions and audit trail apply. Estimate and customer caches are per user. Tokens are kept across logout (an email login does not go through Intuit again) and deleted on deactivation.
 - When a user's QuickBooks connection can no longer be renewed, QuickBooks routes return `401` with `details.code = "QBO_REAUTH_REQUIRED"`; the client must send the user through sign-in again.
 - Rate limit: `/api/auth/qbo/login` — **30 requests / 15 min** per IP (`429` afterwards).
@@ -94,9 +94,7 @@ Guards used below: **Public** (no auth), **Auth** (any signed-in user), **Sales*
 | Method | Path | Guard | Purpose |
 |---|---|---|---|
 | GET | `/api/health` | Public | Liveness check |
-| POST | `/api/auth/login` | Public | Log in with email and password |
-| POST | `/api/auth/change-password` | Auth | Change your own password |
-| POST | `/api/auth/invite/password` | Public | Use an invite link to set a password and sign in |
+| POST | `/api/auth/change-password` | Auth | Change your own password (legacy accounts only) |
 | GET | `/api/auth/qbo/login` | Public | Start "Sign in with QuickBooks"; `?mode=connect` (signed in) connects your own QuickBooks (redirect) |
 | GET | `/api/auth/qbo/callback` | Public | Intuit redirects here; creates the session (redirect) |
 | POST | `/api/auth/logout` | Public | Sign out |
@@ -129,13 +127,17 @@ Guards used below: **Public** (no auth), **Auth** (any signed-in user), **Sales*
 | POST | `/api/payments/void/:id` | Admin | Reverse an approved payment in QBO |
 | GET | `/api/estimates/:id/invoices` | Sales\|Admin | The estimate's QBO invoices: balance and paid |
 | GET | `/api/payments/qbo-accounts` | Admin\|SuperAdmin | List QBO accounts (setup helper) |
+| GET | `/api/reports` | SuperAdmin | Collections, accounts, sales reps and review turnaround over a date range |
 
 ---
 
 ## 4. Health
 
 ### `GET /api/health`
-**200** `{ "ok": true }` — does not check the database or QBO.
+**200** `{ "ok": true }` — does not check the database or QBO. It keeps answering during maintenance, so the host still sees a live server.
+
+### Maintenance mode
+Set `MAINTENANCE_MODE=true` and restart: every other API call answers **503** `{ error: { message, details: { code: "MAINTENANCE", until, message } } }` with a `Retry-After` header, and the app shows a "Down for maintenance" page that checks again every 30 seconds and reloads itself once the portal answers normally. Optional: `MAINTENANCE_UNTIL` (ISO date-time with offset, e.g. `2026-11-05T15:00:00+08:00`) is shown as "back by 3:00 PM today", and `MAINTENANCE_MESSAGE` (one sentence, max 200 characters) is shown under it.
 
 ---
 
@@ -403,7 +405,7 @@ Estimates dated within `ESTIMATE_LOOKBACK_DAYS`, **any status** (the picker endp
 
 ### `GET /api/estimates/:id/invoices` — Sales|Admin
 What QuickBooks says about the invoices created from the estimate (read live, not cached).
-**200** `{ "invoices": [{ "id", "docNumber", "txnDate", "dueDate", "total", "balance" }], "total", "balance", "paid" }`. `invoices` is empty (and the totals 0) until someone creates the invoice in QuickBooks. `paid` is `total - balance`, so it includes payments recorded directly in QuickBooks. **404** if QuickBooks has no such estimate; **502** if QuickBooks cannot be reached. The UI treats the answer as extra information: it warns on submit/approve when there is no invoice, the invoice is already paid, or the amount is above the balance.
+**200** `{ "invoices": [{ "id", "docNumber", "txnDate", "dueDate", "total", "balance" }], "total", "balance", "paid" }`. `invoices` is empty (and the totals 0) until the estimate's first payment is approved (which creates the invoice) or someone creates it in QuickBooks. `paid` is `total - balance`, so it includes payments recorded directly in QuickBooks. **404** if QuickBooks has no such estimate; **502** if QuickBooks cannot be reached. The UI treats the answer as extra information: it notes on approve that an invoice will be created when there is none, and warns when the invoice is already paid or the amount is above the balance.
 
 ---
 
@@ -456,13 +458,15 @@ Body (JSON):
 
 **Dated by when the money arrived:** the QBO Payment and Deposit use the payment's `receivedOn` as their transaction date (not the approval date). Older rows without `receivedOn` fall back to today in `Asia/Manila`.
 
+**Invoice:** the payment is recorded against the invoice for the estimate. If QBO has none yet (this is the estimate's first approved payment), approval creates it first: one invoice for the **full estimate**, copied from the estimate's lines and linked to it, with the customer's default terms and no email sent. Later approved payments for the same estimate find that invoice again and are recorded against it, so it stays open (partially paid) until the balance is zero and no second invoice is created. An invoice made by hand in QBO is found the same way. The invoice id is stored on the payment (`qbo_invoice_id`). Creation is serialised per estimate in process, and QBO's `requestid` is `inv-<estimateId>`. QBO answers a repeated `requestid` with its saved first answer, even for an invoice deleted since, so the created invoice is read back: if it is gone, a real one is created under a fresh `requestid`, and the total check uses the invoice as it is now. **Tax:** when the estimate was taxed as a whole (a rate picked under the subtotal, every item line non-taxable), the invoice lines are marked taxable so QBO applies the same rate; lines already marked taxable or not are copied as they are. **Total check:** if the new invoice's total differs from the estimate, approval stops with `INVOICE_TOTAL_MISMATCH` before any money is recorded. Invoices the portal creates carry a private note starting "Created by the payment portal", and every later approval that reuses one checks its total against the estimate again; invoices made by hand are not checked.
+
 **Retry-safe:** if a previous attempt already created the QBO payment (`qboPaymentId` set), the stored `finalAmount` is reused and the body value is ignored.
 
 **200**
 ```json
 {
   "payment": { "id": "uuid", "status": "approved", "finalAmount": "24625", "approvedBy": "Admin", "qboPaymentId": "789", "qboDepositId": "790", "…": "…" },
-  "qbo": { "paymentId": "789", "depositId": "790", "fee": 375, "unappliedCredit": 0 }
+  "qbo": { "paymentId": "789", "depositId": "790", "invoiceId": "456", "invoiceCreated": true, "fee": 375, "unappliedCredit": 0 }
 }
 ```
 
@@ -471,6 +475,8 @@ Body (JSON):
 | 400 | Bad id or body |
 | 404 | Payment not found |
 | 409 | Already approved/rejected, or already being processed (in-process lock) |
+| 409 | `INVOICE_CREATE_FAILED`: QBO could not create the invoice. The payment stays pending; create the invoice from the estimate in QBO, then approve again (it is picked up as the existing invoice) |
+| 409 | `INVOICE_PAID`: every invoice for the estimate is already fully paid |
 | 422 | `finalAmount` ≤ 0 or greater than submitted |
 | 401/409/502 | QBO not connected / expired / API error |
 
@@ -509,6 +515,29 @@ Setup helper for filling the `QBO_*_ACCOUNT*` env vars. Returns active accounts 
 
 ---
 
+## 9b. Reports — SuperAdmin
+
+### `GET /api/reports?from=2026-10-01&to=2026-10-31&group=week` — SuperAdmin
+Days are `YYYY-MM-DD` in Manila time, both included. Defaults: the last 30 days, today included. At most 366 days; `from` after `to` is a **400**. `group` (`day` | `week` | `month`) is optional: without it the server picks daily up to 31 days, weekly up to 183, monthly beyond. Weeks start on Monday.
+
+**200**
+```json
+{
+  "range": { "from": "2026-10-01", "to": "2026-10-31", "days": 31, "group": "day" },
+  "previous": { "from": "2026-08-31", "to": "2026-09-30" },
+  "collections": { "count": 20, "gross": 367840, "fees": 3420, "net": 364420, "voided": 1, "previousCount": 19, "previousNet": 351200,
+                   "series": [{ "start": "2026-10-01", "count": 1, "net": 18500 }] },
+  "banks": [{ "bank": "BDO", "count": 7, "gross": 128400, "fees": 1980, "net": 126420 }],
+  "reps": [{ "id": "uuid", "name": "Andrea Santos", "submitted": 9, "approved": 7, "rejected": 1, "waiting": 1, "collected": 130600 }],
+  "turnaround": { "decided": 28, "rejected": 3, "medianMinutes": 205, "p90Minutes": 1720,
+                  "bands": [{ "label": "Under 1 hour", "count": 6 }],
+                  "waiting": { "count": 3, "amount": 66200, "oldest": [{ "id": "uuid", "customerName": "Cool Cars", "submittedBy": "Joy", "amount": 23200, "createdAt": "…", "waitingMinutes": 1560 }] } }
+}
+```
+Money is in pesos (numbers). **Collected** counts approved payments by the day they were approved (`approved_at`), net of bank fees; voided payments are left out of the money and reported as `voided`. `previous` is the same number of days right before `from`. `banks` lists every account in a fixed order, zeros included. For each rep, `submitted` counts payments sent in the period, `approved`, `rejected` and `collected` count decisions made in it, and `waiting` is what is pending now. **Turnaround** measures submission to decision for every approval, rejection and voided approval in the period (median and 90th percentile, nearest rank); `waiting` is the queue as it stands, oldest first (5 rows). Every series and list sums to its total.
+
+---
+
 ## 10. Error codes
 
 Machine-readable values in `error.details.code`:
@@ -518,7 +547,6 @@ Machine-readable values in `error.details.code`:
 | `INVALID_RECEIVER` | 422 | Chosen receiver not an active sales user | Refresh receivers list |
 | `DUPLICATE_REFERENCE` | 409 | Bank reference already used | Block; tell user |
 | `DUPLICATE_PENDING` | 409 | Similar pending payment in last 24 h | Confirm, then resubmit with `force=true` |
-| `PASSWORD_RESET_REQUIRED` | 403 | Old temporary password | Ask a SuperAdmin for an invite link |
 | `QBO_NOT_CONNECTED` | 409 | This user never connected QuickBooks | Show Connect QuickBooks |
 | `QBO_REAUTH_REQUIRED` | 401 | No QuickBooks connection for this user, or its refresh token expired/revoked | Send the user to `/api/auth/qbo/login` |
 | `INVITE_INVALID` | 404 | Invite link unknown, expired, used, or for a deactivated account | Ask the SuperAdmin for a new link |

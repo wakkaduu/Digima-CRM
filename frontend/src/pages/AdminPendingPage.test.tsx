@@ -96,7 +96,8 @@ describe('AdminPendingPage review', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Approve Acme Corp?' });
     expect(dialog).toHaveTextContent('Net to BDO');
-    expect(dialog).toHaveTextContent('closes the invoice for the full ₱2,500.00');
+    expect(dialog).toHaveTextContent("posts ₱2,500.00 to the estimate's invoice");
+    expect(dialog).toHaveTextContent('stays open until the full balance is paid');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Approve and post ₱2,462.50' }));
 
     await waitFor(() => expect(posts(fetchMock)).toEqual([['/api/payments/approve/old', { finalAmount: '2462.50' }]]));
@@ -105,8 +106,18 @@ describe('AdminPendingPage review', () => {
     expect(await screen.findByRole('heading', { name: 'Gamma Inc' })).toBeInTheDocument();
   });
 
-  it('shows a persistent warning, not an error, when the estimate has no invoice yet', async () => {
-    setup({ 'POST /api/payments/approve/old': [409, { error: { message: 'No invoice is linked to this estimate yet. In QuickBooks, open the estimate and choose "Create invoice", then approve again.', details: { code: 'NO_INVOICE' } } }] });
+  it('says so when approving created the invoice', async () => {
+    setup({ 'POST /api/payments/approve/old': [200, { qbo: { paymentId: '77', depositId: null, invoiceId: '900', invoiceNumber: '1038', invoiceCreated: true, fee: 0, unappliedCredit: 0 } }] });
+    await open('Acme Corp');
+    await userEvent.click(screen.getByRole('button', { name: /^Approve ₱/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Approve Acme Corp?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: /Approve and post/ }));
+
+    expect(await screen.findByText(/invoice #1038 created, payment #77/)).toBeInTheDocument();
+  });
+
+  it('shows a persistent warning, not an error, when QuickBooks could not create the invoice', async () => {
+    setup({ 'POST /api/payments/approve/old': [409, { error: { message: "QuickBooks couldn't create the invoice for this estimate. In QuickBooks, open the estimate and choose \"Create invoice\", then approve again.", details: { code: 'INVOICE_CREATE_FAILED' } } }] });
     await open('Acme Corp');
     await userEvent.click(screen.getByRole('button', { name: /^Approve ₱/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Approve Acme Corp?' });

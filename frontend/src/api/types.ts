@@ -102,7 +102,16 @@ export interface AuditEvent {
 export interface PaymentDetail extends HistoryPayment {
   fee: number | null;
   events: AuditEvent[];
-  qbo?: { paymentId: string | null; depositId: string | null; customerId: string | null };
+  qbo?: {
+    paymentId: string | null;
+    depositId: string | null;
+    /** QuickBooks' internal invoice id; `invoiceNumber` is the one people search for. */
+    invoiceId?: string | null;
+    invoiceNumber?: string | null;
+    /** Opens the invoice in the QuickBooks web app. */
+    invoiceUrl?: string | null;
+    customerId: string | null;
+  };
 }
 
 export interface BankOption {
@@ -125,7 +134,18 @@ export interface Receiver {
 }
 
 export interface ApproveResult {
-  qbo: { paymentId: string; depositId?: string | null; fee: number; unappliedCredit: number };
+  qbo: {
+    paymentId: string;
+    depositId?: string | null;
+    /** The invoice the payment was recorded against. */
+    invoiceId?: string | null;
+    /** The invoice number shown and searchable in QuickBooks (`invoiceId` is QuickBooks' internal id). */
+    invoiceNumber?: string | null;
+    /** True when this approval created the invoice (the first payment for the estimate). */
+    invoiceCreated?: boolean;
+    fee: number;
+    unappliedCredit: number;
+  };
 }
 
 export interface QboStatus {
@@ -209,4 +229,40 @@ export interface InvoiceSummary {
   balance: number;
   /** Total minus balance (includes payments recorded directly in QuickBooks). */
   paid: number;
+}
+
+export type ReportGroup = 'day' | 'week' | 'month';
+
+/** GET /api/reports: money in pesos, waits in minutes, days as YYYY-MM-DD in Manila time. */
+export interface Report {
+  range: { from: string; to: string; days: number; group: ReportGroup };
+  /** The same number of days right before `from`, for the comparison. */
+  previous: { from: string; to: string };
+  collections: {
+    count: number;
+    gross: number;
+    fees: number;
+    net: number;
+    /** Approved in the period, then reversed: not counted as collected. */
+    voided: number;
+    previousCount: number;
+    previousNet: number;
+    /** One entry per day, week (Monday) or month (1st), oldest first, empty periods included. */
+    series: { start: string; count: number; net: number }[];
+  };
+  banks: { bank: string; count: number; gross: number; fees: number; net: number }[];
+  /** Most collected first. `submitted` counts payments sent in the period; the rest count decisions made in it. */
+  reps: { id: string | null; name: string; submitted: number; approved: number; rejected: number; waiting: number; collected: number }[];
+  turnaround: {
+    decided: number;
+    rejected: number;
+    medianMinutes: number | null;
+    p90Minutes: number | null;
+    bands: { label: string; count: number }[];
+    waiting: {
+      count: number;
+      amount: number;
+      oldest: { id: string; customerName: string; submittedBy: string; amount: number; createdAt: string; waitingMinutes: number }[];
+    };
+  };
 }

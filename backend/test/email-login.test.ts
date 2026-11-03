@@ -2,23 +2,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { changePasswordSchema, inviteSetPasswordSchema, loginSchema, newPasswordSchema } from '../src/validators/auth.validator';
+import { changePasswordSchema, newPasswordSchema } from '../src/validators/auth.validator';
 import { hashPassword, verifyPassword } from '../src/services/password';
 import { decideConnect } from '../src/services/signInDecision';
-
-test('login: the email is trimmed and lower-cased, and junk is rejected', () => {
-    assert.deepEqual(loginSchema.parse({ email: '  Ana@Example.COM ', password: 'x' }), { email: 'ana@example.com', password: 'x' });
-    for (const bad of [{ email: 'nope', password: 'x' }, { email: 'a@b.co', password: '' }, { email: 'a@b.co', password: 'x'.repeat(201) }, { email: 'a@b.co' }]) {
-        assert.equal(loginSchema.safeParse(bad).success, false, JSON.stringify(bad).slice(0, 50));
-    }
-});
 
 test('new passwords: 10 to 200 characters', () => {
     assert.equal(newPasswordSchema.safeParse('123456789').success, false);
     assert.ok(newPasswordSchema.safeParse('1234567890').success);
     assert.equal(newPasswordSchema.safeParse('x'.repeat(201)).success, false);
     assert.equal(changePasswordSchema.safeParse({ currentPassword: 'old', newPassword: 'short' }).success, false);
-    assert.equal(inviteSetPasswordSchema.safeParse({ token: 't', password: 'short' }).success, false);
 });
 
 test('password hashing: verifies the right password only, with a fresh salt each time, and never throws on junk', async () => {

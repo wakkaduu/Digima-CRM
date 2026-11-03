@@ -34,8 +34,8 @@ export function ApproveDialog({ open, payment: p, amounts: a, loading, onConfirm
         <dd className="border-t border-border pt-1 font-semibold">{peso(net)}</dd>
       </dl>
       <p className="text-text-muted">
-        This posts the payment to QuickBooks and closes the invoice for the full {peso(gross)}. It cannot be undone
-        from here.
+        This posts {peso(gross)} to the estimate's invoice in QuickBooks, creating the invoice first if there isn't one
+        yet. The invoice stays open until the full balance is paid. It cannot be undone from here.
       </p>
       {p.qboPartiallyPosted && (
         <p className="mt-2 text-warning">An earlier approval was only partly posted. This finishes the sync with the same amount.</p>

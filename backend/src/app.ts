@@ -13,6 +13,8 @@ import userRoutes from './routes/user.routes';
 import paymentRoutes from './routes/payment.routes';
 import configRoutes from './routes/config.routes';
 import { customerRoutes, estimateRoutes } from './routes/crm.routes';
+import reportRoutes from './routes/report.routes';
+import { maintenanceGate } from './middleware/maintenance';
 
 const app = express();
 const isProd = env.NODE_ENV === 'production';
@@ -49,11 +51,10 @@ app.use(
 );
 
 // Each sign-in attempt costs an Intuit round trip; cap them per client
-// Brute-force protection for the email login
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 }));
 app.use('/api/auth/invite', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 })); // invite tokens are unguessable; this just stops hammering
 app.use('/api/auth/qbo/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }));
 
+app.use(maintenanceGate({ enabled: env.MAINTENANCE_MODE, until: env.MAINTENANCE_UNTIL, message: env.MAINTENANCE_MESSAGE }));
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/qbo', qboRoutes);
@@ -62,6 +63,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/estimates', estimateRoutes);
+app.use('/api/reports', reportRoutes);
 
 // JSON API only. The React app is served separately (Vite on :5173, which proxies /api here).
 app.use(notFound);

@@ -50,6 +50,12 @@ const schema = z.object({
     SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 chars'),
     DEFAULT_FEE_PERCENT: z.coerce.number().min(0).max(20).default(1.5), // pre-fills the approval screen's "apply fee" button
     ESTIMATE_LOOKBACK_DAYS: z.coerce.number().int().min(30).default(365),
+
+    // Maintenance: every API call except /api/health answers 503, and the app shows a "down for maintenance" page.
+    MAINTENANCE_MODE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+    // Optional, shown on that page: when it is expected back (ISO date-time) and one sentence on why.
+    MAINTENANCE_UNTIL: z.preprocess((v) => (v === '' ? undefined : v), z.string().datetime({ offset: true }).optional()),
+    MAINTENANCE_MESSAGE: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().max(200).optional()),
 }).refine((v) => v.NODE_ENV !== 'production' || v.QBO_EXTRA_REALM_IDS.length === 0, {
     path: ['QBO_EXTRA_REALM_IDS'],
     message: 'QBO_EXTRA_REALM_IDS is for development sandboxes only; production serves the single QBO_REALM_ID',

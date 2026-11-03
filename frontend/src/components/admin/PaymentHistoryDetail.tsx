@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ban } from 'lucide-react';
+import { ArrowLeft, Ban, ExternalLink } from 'lucide-react';
 import { api, ApiError } from '../../api/client';
 import { PAYMENTS_KEY, usePaymentDetail } from '../../api/payments';
 import { CRM_KEY } from '../../api/crm';
@@ -108,6 +108,22 @@ export function PaymentHistoryDetail({ id }: { id: string }) {
                     <dd className="tabular-nums">{p.fee ? `− ${peso(p.fee)}` : '—'}</dd>
                     <dt className="font-semibold text-text">Net posted</dt>
                     <dd className="font-semibold tabular-nums">{peso(p.finalAmount)}</dd>
+                  </>
+                )}
+                {p.qbo?.invoiceId && (
+                  <>
+                    <dt>QuickBooks invoice</dt>
+                    <dd>
+                      {p.qbo.invoiceUrl ? (
+                        <a href={p.qbo.invoiceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline">
+                          {p.qbo.invoiceNumber ? `#${p.qbo.invoiceNumber}` : 'Open in QuickBooks'}
+                          <ExternalLink aria-hidden className="size-3.5" />
+                          <span className="sr-only">(opens QuickBooks in a new tab)</span>
+                        </a>
+                      ) : (
+                        `#${p.qbo.invoiceNumber ?? p.qbo.invoiceId}`
+                      )}
+                    </dd>
                   </>
                 )}
                 {p.qbo?.paymentId && (

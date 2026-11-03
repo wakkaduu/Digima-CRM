@@ -15,7 +15,7 @@ import { cn } from '../../lib/cn';
 import { waiting } from '../../lib/review';
 import { DailyBars } from './DailyBars';
 import { Figure, FigureStrip } from './Figure';
-import { Row, Section, SectionEmpty } from './Section';
+import { BlockError, Row, Section, SectionEmpty } from './Section';
 import { FETCH_DAYS, WINDOW_DAYS, dayShort, elapsed, fetchFrom, summarise } from './overview';
 
 const QUEUE_ROWS = 4;
@@ -200,17 +200,5 @@ export function ExecutiveDashboard() {
         </div>
       </div>
     </div>
-  );
-}
-
-/** A block that failed says what and offers a retry, inside its own frame. */
-function BlockError({ what, onRetry }: { what: string; onRetry: () => void }) {
-  return (
-    <p role="alert" className="px-4 py-6 text-text-muted">
-      Could not load {what}.{' '}
-      <button type="button" onClick={onRetry} className="min-h-6 cursor-pointer text-accent underline">
-        Retry
-      </button>
-    </p>
   );
 }

@@ -32,8 +32,9 @@ describe('TeamPage', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Role for Cy Boss' })).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Deactivate Cy Boss' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reactivate Old Hand' })).toBeInTheDocument();
-    // You can get a link for yourself too: it is how a SuperAdmin without a password sets one.
-    expect(screen.getByRole('button', { name: 'Get a link to set your own password' })).toBeInTheDocument();
+    // Nobody needs an invite link for their own account: you are already signed in with QuickBooks.
+    expect(screen.queryByRole('button', { name: /invite link for Cy Boss/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New invite link for Sam Reyes' })).toBeInTheDocument();
   });
 
   it('changes a role straight from the list', async () => {

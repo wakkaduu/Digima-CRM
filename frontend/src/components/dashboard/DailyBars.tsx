@@ -4,6 +4,7 @@ import { dayShort, niceTicks } from './overview';
 
 const HEIGHT = 208;
 const PAD = { top: 8, right: 4, bottom: 26, left: 64 };
+const MIN_LABEL_GAP = 56; // px between x labels, so "Oct 26" never touches its neighbour
 const money = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 0 });
 
 /** Width of the element, so the SVG is drawn at 1:1 and its text never scales. */
@@ -23,9 +24,20 @@ function useWidth(fallback = 640) {
 /**
  * One series of money per day as square columns in the accent: 4 faint gridlines, round ticks with the top one above the
  * largest bar, no y-axis line, a heavier baseline, x labels on one step that lands on the last day. Days with nothing
- * are missing bars, not stubs. Amounts are in centavos.
+ * are missing bars, not stubs. Amounts are in centavos. `day` may be the start of a week or month: pass `tickLabel` to
+ * name it, and `step` to label every n-th period instead of every 3rd or 4th.
  */
-export function DailyBars({ days, label }: { days: { day: string; cents: number }[]; label: string }) {
+export function DailyBars({
+  days,
+  label,
+  tickLabel = dayShort,
+  step: everyN,
+}: {
+  days: { day: string; cents: number }[];
+  label: string;
+  tickLabel?: (day: string) => string;
+  step?: number;
+}) {
   const [ref, width] = useWidth();
   const maxC = Math.max(0, ...days.map((d) => d.cents));
   const ticks = niceTicks(maxC / 100); // pesos
@@ -35,13 +47,14 @@ export function DailyBars({ days, label }: { days: { day: string; cents: number 
   const band = days.length ? plotW / days.length : 0;
   const barW = Math.max(2, Math.min(band * 0.64, 40));
   const y = (pesos: number) => PAD.top + plotH - (pesos / top) * plotH;
-  const step = width < 420 ? 4 : 3; // labels every `step` days, counted back from the last one
+  // Labels every `step` periods, counted back from the last one, and never closer than a label's width ("Oct 26").
+  const step = Math.max(everyN ?? (width < 420 ? 4 : 3), band > 0 ? Math.ceil(MIN_LABEL_GAP / band) : 1);
   const peak = days.reduce((a, b) => (b.cents > a.cents ? b : a), days[0] ?? { day: '', cents: 0 });
 
   const summary =
     maxC === 0
-      ? `${label}: nothing approved from ${dayShort(days[0]?.day ?? '')} to ${dayShort(days.at(-1)?.day ?? '')}.`
-      : `${label}, ${dayShort(days[0]!.day)} to ${dayShort(days.at(-1)!.day)}. Highest day ${dayShort(peak.day)}, ${peso(peak.cents / 100)}.`;
+      ? `${label}: nothing approved from ${tickLabel(days[0]?.day ?? '')} to ${tickLabel(days.at(-1)?.day ?? '')}.`
+      : `${label}, ${tickLabel(days[0]!.day)} to ${tickLabel(days.at(-1)!.day)}. Highest ${tickLabel(peak.day)}, ${peso(peak.cents / 100)}.`;
 
   return (
     <div ref={ref} className="w-full">
@@ -65,12 +78,12 @@ export function DailyBars({ days, label }: { days: { day: string; cents: number 
             <g key={d.day}>
               {d.cents > 0 && (
                 <rect x={cx - barW / 2} y={y(0) - h} width={barW} height={h} className="fill-accent">
-                  <title>{`${dayShort(d.day)}: ${peso(d.cents / 100)}`}</title>
+                  <title>{`${tickLabel(d.day)}: ${peso(d.cents / 100)}`}</title>
                 </rect>
               )}
               {(days.length - 1 - i) % step === 0 && (
                 <text x={cx} y={HEIGHT - 6} textAnchor="middle" className="fill-text-muted text-micro">
-                  {dayShort(d.day)}
+                  {tickLabel(d.day)}
                 </text>
               )}
             </g>

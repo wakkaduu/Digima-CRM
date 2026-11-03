@@ -53,6 +53,40 @@ export const listActiveForEstimates = (estimateIds: string[]) =>
         select: { qboEstimateId: true, status: true, amountSubmitted: true, finalAmount: true },
     });
 
+const REPORT_SELECT = {
+    id: true,
+    status: true,
+    customerName: true,
+    bankDepositedTo: true,
+    amountSubmitted: true,
+    finalAmount: true,
+    submittedBy: true,
+    submittedById: true,
+    createdAt: true,
+    approvedAt: true,
+} as const;
+
+/** The rows the SuperAdmin report is computed from (see services/report.ts). Bounds: `gte` inclusive, `lt` exclusive. */
+export const listForReport = ({ decidedFrom, createdFrom, until }: { decidedFrom: Date; createdFrom: Date; until: Date }) =>
+    prisma.$transaction([
+        prisma.payment.findMany({
+            where: { status: { in: ['approved', 'rejected', 'voided'] }, approvedAt: { gte: decidedFrom, lt: until } },
+            select: REPORT_SELECT,
+        }),
+        prisma.payment.findMany({ where: { createdAt: { gte: createdFrom, lt: until } }, select: REPORT_SELECT }),
+        prisma.payment.findMany({ where: { status: 'pending' }, select: REPORT_SELECT }),
+    ]);
+
+/** Invoice ids the portal already recorded payments against for this estimate. */
+export const findInvoiceIdsForEstimate = async (estimateId: string) => {
+    const rows = await prisma.payment.findMany({
+        where: { qboEstimateId: estimateId, qboInvoiceId: { not: null }, status: { in: ['pending', 'approved', 'voided'] } },
+        select: { qboInvoiceId: true },
+        distinct: ['qboInvoiceId'],
+    });
+    return rows.map((r) => r.qboInvoiceId as string);
+};
+
 // Same bank + same reference number among live payments = true duplicate.
 export const findActiveByReference = (bank: BankAccount, referenceNo: string) =>
     prisma.payment.findFirst({

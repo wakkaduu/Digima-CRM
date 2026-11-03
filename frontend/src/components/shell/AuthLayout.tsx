@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import { BrandLockup } from './BrandLockup';
 
 /** The signed-out screens (sign in, invite): brand panel on the left from 1024px, the content on the right. */
@@ -21,6 +22,14 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div className="w-full max-w-[640px]">
           <BrandLockup className="mb-6 lg:hidden" />
           {children}
+          <nav aria-label="Legal" className="mt-10 flex gap-4 text-small text-text-muted">
+            <Link to="/privacy" className="underline hover:text-text">
+              Privacy policy
+            </Link>
+            <Link to="/terms" className="underline hover:text-text">
+              Terms of use
+            </Link>
+          </nav>
         </div>
       </main>
     </div>

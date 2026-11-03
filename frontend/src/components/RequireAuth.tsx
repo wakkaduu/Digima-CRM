@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { homePath, useMe } from '../api/auth';
 import type { Role } from '../api/types';
+import { ErrorPage } from '../pages/ErrorPage';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Message } from './Message';
 import { AppShell } from './shell/AppShell';
 import { PageSkeleton } from './ui/Skeletons';
@@ -33,10 +35,12 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
 
   return (
     <AppShell user={user}>
-      {/* Inside the shell, so the sidebar stays put while a page's code loads. */}
-      <Suspense fallback={<PageSkeleton />}>
-        <Outlet />
-      </Suspense>
+      {/* Inside the shell, so the sidebar stays put while a page's code loads, and when a page crashes. */}
+      <ErrorBoundary resetKey={pathname} fallback={(err, reset) => <ErrorPage error={err} onRetry={reset} />}>
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </ErrorBoundary>
     </AppShell>
   );
 }

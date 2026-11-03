@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { ClipboardCheck, FileText, LayoutDashboard, Plug, ReceiptText, Send, UserCog, Users } from 'lucide-react';
+import { ChartColumn, ClipboardCheck, FileText, LayoutDashboard, Plug, ReceiptText, Send, UserCog, Users } from 'lucide-react';
 import { useCounts } from '../../api/payments';
 import type { Role, User } from '../../api/types';
 
@@ -30,6 +30,7 @@ export const NAV: NavItem[] = [
   { to: '/payments/new', label: 'Submit payment', short: 'Submit', icon: Send, roles: ['sales'], group: 'Finance', primary: true },
   { to: '/payments', label: 'My payments', short: 'Payments', icon: ReceiptText, roles: ['sales'], group: 'Finance', badge: 'unseen' },
   { to: '/estimates', label: 'Estimates', short: 'Estimates', icon: FileText, roles: ['sales', 'admin', 'superadmin'], group: 'Sales', matchChildren: true },
+  { to: '/reports', label: 'Reports', short: 'Reports', icon: ChartColumn, roles: ['superadmin'], group: 'Finance' },
   { to: '/settings/team', label: 'Team', short: 'Team', icon: UserCog, roles: ['superadmin'], group: 'Admin' },
   { to: '/settings/integrations', label: 'QuickBooks', short: 'QuickBooks', icon: Plug, roles: ['sales', 'admin', 'superadmin'], group: 'Account' },
 ];
