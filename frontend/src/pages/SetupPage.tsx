@@ -93,7 +93,7 @@ export default function SetupPage() {
       {failure && <Message focus>{failure}</Message>}
 
       <div className="space-y-4">
-        <Card className="space-y-5 p-5">
+        <Card className="space-y-5 p-5" data-tour="p:quickbooks.status">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-body font-semibold">Connection</h2>
             {status.isPending ? (
@@ -142,7 +142,7 @@ export default function SetupPage() {
 
           <div className="flex flex-wrap gap-2">
             {/* A real navigation: the backend redirects to Intuit and back. */}
-            <a href={connectUrl('/settings/integrations')} className={buttonClass({ variant: healthy ? 'secondary' : 'primary' })}>
+            <a href={connectUrl('/settings/integrations')} data-tour="p:quickbooks.connect" className={buttonClass({ variant: healthy ? 'secondary' : 'primary' })}>
               <Link2 aria-hidden className="size-4" />
               {s?.connected ? 'Reconnect to QuickBooks' : 'Connect QuickBooks'}
             </a>
@@ -162,7 +162,7 @@ export default function SetupPage() {
           <p className="text-small text-text-muted">The connection is created when you sign in. What you can see and post follows your QuickBooks permissions.</p>
         </Card>
 
-        <Card className="space-y-3 p-5">
+        <Card className="space-y-3 p-5" data-tour="p:quickbooks.test">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
             <div className="min-w-0">
               <h2 className="text-body font-semibold">Test the connection</h2>

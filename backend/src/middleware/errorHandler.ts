@@ -8,13 +8,15 @@ export const notFound: RequestHandler = (req, res, next) =>
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     const status = err.status || 500;
-    if (status >= 500) console.error(err);
+    const requestId = req.id;
+    // One line a log search can find by request id, then the stack.
+    if (status >= 500) console.error(`[error] ${requestId ?? '-'} ${req.method} ${req.originalUrl} -> ${status}`, err);
 
     // QuickBooks' raw fault and Intuit's transaction id are for our logs, not for the browser.
     let details = err.details;
     if (details && typeof details === 'object' && !Array.isArray(details)) {
         const { fault, intuitTid, ...rest } = details as Record<string, unknown>;
-        if (fault || intuitTid) console.error('QuickBooks error', { intuitTid, fault });
+        if (fault || intuitTid) console.error(`[qbo] ${requestId ?? '-'} QuickBooks error`, { intuitTid, fault });
         details = Object.keys(rest).length ? rest : undefined;
     }
 
@@ -23,6 +25,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
         error: {
             message: hideMessage ? 'Internal server error' : err.message,
             details,
+            requestId,
         },
     });
 };

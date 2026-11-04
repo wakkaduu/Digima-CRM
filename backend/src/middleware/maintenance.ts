@@ -13,13 +13,14 @@ export interface MaintenanceConfig {
  */
 export function maintenanceGate(config: MaintenanceConfig): RequestHandler {
     return (req, res, next) => {
-        if (!config.enabled || req.path === '/api/health') return next();
+        if (!config.enabled || req.path === '/api/health' || req.path === '/api/health/live') return next();
         const secondsLeft = config.until ? Math.ceil((Date.parse(config.until) - Date.now()) / 1000) : NaN;
         res.set('Retry-After', String(secondsLeft > 0 ? Math.min(secondsLeft, 3600) : 120));
         res.status(503).json({
             error: {
                 message: 'The portal is down for maintenance. Please try again shortly.',
                 details: { code: 'MAINTENANCE', until: config.until ?? null, message: config.message ?? null },
+                requestId: req.id,
             },
         });
     };

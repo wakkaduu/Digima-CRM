@@ -146,8 +146,9 @@ export default function AdminPendingPage() {
       {data && (
         <div className="lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-6">
           {/* Queue: on phones it is hidden while a payment is open. */}
-          <section aria-label="Review queue" className={cn(id && 'hidden lg:block', 'lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto')}>
+          <section aria-label="Review queue" data-tour="p:approvals.queue" className={cn(id && 'hidden lg:block', 'lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto')}>
             <FilterBar
+              tour="p:approvals.filters"
               tabs={{
                 label: 'Queue view',
                 value: tab,
@@ -197,7 +198,9 @@ export default function AdminPendingPage() {
                 )}
               </>
             ) : pendingRows.length > 0 ? (
-              <QueueList payments={pendingRows} selectedId={id} />
+              <div data-tour="p:approvals.list">
+                <QueueList payments={pendingRows} selectedId={id} />
+              </div>
             ) : (
               <Card>
                 {nothingToReview ? (

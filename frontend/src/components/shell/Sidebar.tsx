@@ -40,6 +40,7 @@ function Item({ item, count, collapsed }: { item: NavItem; count: number; collap
     <NavLink
       to={item.to}
       end={!item.matchChildren}
+      data-tour={`nav:${item.to}`}
       aria-label={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         cn(

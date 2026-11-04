@@ -44,14 +44,14 @@ export default function EstimateDetailPage() {
         description={e.customerId ? <Link to={`/customers/${e.customerId}`} className="text-accent underline">{e.customerName}</Link> : e.customerName}
         actions={
           canRecord && (
-            <Link to={`/payments/new?estimateId=${e.id}`} className={buttonClass({ variant: 'primary' })}>
+            <Link to={`/payments/new?estimateId=${e.id}`} data-tour="p:estimate.record" className={buttonClass({ variant: 'primary' })}>
               <Send aria-hidden className="size-4" /> Record payment
             </Link>
           )
         }
       />
 
-      <Card className="space-y-4">
+      <Card className="space-y-4" data-tour="p:estimate.progress">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-body font-semibold">Payment progress</h2>
           <p className="text-title font-semibold tabular-nums">{peso(e.totalAmount)}</p>
@@ -59,7 +59,9 @@ export default function EstimateDetailPage() {
         <EstimateProgress total={e.totalAmount} approved={e.approvedAmount} pending={e.pendingAmount} />
       </Card>
 
-      <InvoiceBalance estimateId={e.id} approvedAmount={e.approvedAmount} />
+      <div data-tour="p:estimate.invoice">
+        <InvoiceBalance estimateId={e.id} approvedAmount={e.approvedAmount} />
+      </div>
 
       <Card>
         <h2 className="mb-3 text-body font-semibold">Details</h2>
@@ -117,7 +119,7 @@ export default function EstimateDetailPage() {
         </Card>
       )}
 
-      <section aria-labelledby="est-payments">
+      <section aria-labelledby="est-payments" data-tour="p:estimate.payments">
         <h2 id="est-payments" className="mb-2 text-body font-semibold">Payments</h2>
         {me && <LinkedPayments filter={{ estimateId: e.id }} role={me.role} showEstimate={false} />}
       </section>

@@ -35,6 +35,7 @@ export function TabBar({ user, counts }: { user: User; counts: Record<'pending' 
               key={t.to}
               to={t.to}
               end={!t.matchChildren}
+              data-tour={`nav:${t.to}`}
               className={({ isActive }) =>
                 cn(slot, isActive ? 'border-t-2 border-accent font-semibold text-accent' : 'border-t-2 border-transparent text-text-muted')
               }
@@ -58,6 +59,7 @@ export function TabBar({ user, counts }: { user: User; counts: Record<'pending' 
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
+          data-tour="nav:more"
           aria-haspopup="dialog"
           className={cn(slot, 'border-t-2 border-transparent text-text-muted')}
         >

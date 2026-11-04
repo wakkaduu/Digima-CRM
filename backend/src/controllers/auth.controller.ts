@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword } from '../services/password';
 import { changePasswordSchema } from '../validators/auth.validator';
 import HttpError from '../utils/HttpError';
 import asyncHandler from '../utils/asyncHandler';
+import { z } from 'zod';
 
 const publicUser = (u: User) => ({
     id: u.id,
@@ -15,6 +16,49 @@ const publicUser = (u: User) => ({
     role: u.role,
     /** Can sign in with email and password (and so change it). */
     hasPassword: Boolean(u.passwordHash),
+    /** Finished the product tour, or asked not to see it again: the app no longer offers it at sign-in. */
+    tourDone: Boolean(u.tourCompletedAt),
+    /** Pages whose tour they finished, and whether they turned page tours off ("Don't show page tours again"). */
+    tourPagesDone: u.tourPagesDone ?? [],
+    pageToursOff: Boolean(u.pageToursOff),
+});
+
+/** Pages that have a page tour. The frontend's list (components/tour/pageTours.tsx) must use the same ids. */
+export const TOUR_PAGES = [
+    'dashboard',
+    'submit',
+    'my-payments',
+    'approvals',
+    'review',
+    'customers',
+    'customer',
+    'estimates',
+    'estimate',
+    'quickbooks',
+    'team',
+    'reports',
+    'activity',
+] as const;
+
+export const tourSchema = z.object({ outcome: z.enum(['finished', 'dismissed']), page: z.enum(TOUR_PAGES).optional() });
+
+// POST /api/auth/tour   { outcome: "finished" | "dismissed", page?: "submit" | ... }   (signed in)
+// Without `page`, the welcome tour: either outcome stops it being offered at sign-in. With `page`, that page's tour:
+// "finished" marks the page done; "dismissed" ("Don't show page tours again") turns page tours off altogether.
+// Skipping without asking not to see it again sends nothing, so it comes back at the next sign-in.
+export const tour = asyncHandler(async (req, res) => {
+    const parsed = tourSchema.safeParse(req.body);
+    if (!parsed.success) throw new HttpError(400, 'outcome must be "finished" or "dismissed", and page one of the pages with a tour');
+    const { outcome, page } = parsed.data;
+    if (!page) {
+        if (!req.user.tourCompletedAt) await userModel.update(req.user.id, { tourCompletedAt: new Date() });
+    } else if (outcome === 'dismissed') {
+        if (!req.user.pageToursOff) await userModel.update(req.user.id, { pageToursOff: true });
+    } else if (!req.user.tourPagesDone.includes(page)) {
+        await userModel.update(req.user.id, { tourPagesDone: { push: page } });
+    }
+    const user = await userModel.findById(req.user.id);
+    res.json({ ok: true, ...(user ? publicUser(user) : {}) });
 });
 
 // The only way in is Sign in with QuickBooks (qbo.controller.ts), which starts the session.
@@ -27,7 +71,8 @@ export const logout = (req: Request, res: Response) => {
 
 export const me = asyncHandler(async (req, res) => {
     const user = await loadUser(req);
-    res.json({ user: user ? publicUser(user) : null });
+    // signedInAt tells the app this is a new sign-in (the product tour is offered once per sign-in, not once per tab).
+    res.json({ user: user ? { ...publicUser(user), signedInAt: req.session?.signedInAt ?? null } : null });
 });
 
 // POST /api/auth/change-password   { currentPassword, newPassword }   (signed in, with a password)

@@ -4,8 +4,12 @@ import { cn } from '../../lib/cn';
 import { Skeleton } from '../ui/States';
 
 /** One container split by 1px dividers into equal columns (2 x 2 on a phone). Figures sit in it without tiles or icons. */
-export function FigureStrip({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('grid grid-cols-2 gap-px overflow-hidden rounded-card border border-border bg-border', className)}>{children}</div>;
+export function FigureStrip({ children, className, tour }: { children: ReactNode; className?: string; tour?: string }) {
+  return (
+    <div data-tour={tour} className={cn('grid grid-cols-2 gap-px overflow-hidden rounded-card border border-border bg-border', className)}>
+      {children}
+    </div>
+  );
 }
 
 /**

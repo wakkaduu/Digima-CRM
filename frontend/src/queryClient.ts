@@ -1,6 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 import { ApiError } from './api/client';
 import { ME_KEY, connectUrl } from './api/auth';
+import { markSessionEnded } from './lib/session';
 
 const REAUTH_TRIP_KEY = 'digima.qbo.reauth';
 const REAUTH_TRIP_GAP_MS = 30_000;
@@ -26,7 +27,10 @@ function signInAgain() {
 // (QBO_REAUTH_REQUIRED is also a 401, but it is about the user's QuickBooks connection, not the session.)
 function handleSessionErrors(error: unknown) {
   if (!(error instanceof ApiError) || error.status !== 401) return;
-  if (error.code !== 'QBO_REAUTH_REQUIRED') queryClient.setQueryData(ME_KEY, null);
+  if (error.code === 'QBO_REAUTH_REQUIRED') return;
+  // Someone was signed in a moment ago: the session ended on its own, and the sign-in page should say so.
+  if (queryClient.getQueryData(ME_KEY)) markSessionEnded();
+  queryClient.setQueryData(ME_KEY, null);
 }
 
 export const queryClient: QueryClient = new QueryClient({

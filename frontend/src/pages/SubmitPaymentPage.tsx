@@ -382,7 +382,7 @@ export function SubmitPaymentPage() {
 
       <form noValidate onSubmit={onSubmit} className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
         <div>
-          <Card className="mb-4">
+          <Card className="mb-4" data-tour="p:submit.estimate">
             <h2 className="mb-3 text-body font-semibold">Estimate</h2>
             <EstimatePicker
               selected={selected}
@@ -450,6 +450,7 @@ export function SubmitPaymentPage() {
               </Message>
             )}
 
+            <div data-tour="p:submit.bank">
             <RadioCards
               name="bank"
               legend="Paid via"
@@ -481,6 +482,8 @@ export function SubmitPaymentPage() {
             )}
 
             <h2 className="mt-6 mb-3 text-body font-semibold">Proof</h2>
+            </div>
+            <div data-tour="p:submit.receipt">
             <ReceiptUpload
               file={file}
               previewUrl={previewUrl}
@@ -490,7 +493,8 @@ export function SubmitPaymentPage() {
               onRemove={() => setFile(null)}
             />
 
-            <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-3" data-tour="p:submit.received">
               <p className="min-w-0">{receivedLabel}</p>
               <Button size="sm" aria-haspopup="dialog" onClick={() => setSheetOpen(true)} className="shrink-0">
                 Change
@@ -502,7 +506,7 @@ export function SubmitPaymentPage() {
           </Card>
 
           <StickyActionBar>
-            <Button type="submit" variant="primary" block disabled={qboDown} loading={submit.isPending} loadingLabel={progress < 100 ? `Uploading ${progress}%…` : 'Submitting…'} size="lg">
+            <Button type="submit" data-tour="p:submit.send" variant="primary" block disabled={qboDown} loading={submit.isPending} loadingLabel={progress < 100 ? `Uploading ${progress}%…` : 'Submitting…'} size="lg">
               Submit for approval
             </Button>
             <p className="mt-1 hidden text-small text-text-muted lg:block">
@@ -511,7 +515,7 @@ export function SubmitPaymentPage() {
           </StickyActionBar>
         </div>
 
-        <aside aria-label="Summary" className="hidden lg:sticky lg:top-6 lg:block">
+        <aside aria-label="Summary" data-tour="p:submit.summary" className="hidden lg:sticky lg:top-6 lg:block">
           <Card className="p-5">
             <h2 className="text-small text-text-muted">This payment</h2>
             <p className={`mt-1 text-[1.875rem] leading-9 font-semibold tabular-nums ${amountValid ? '' : 'text-text-muted'}`}>{peso(amountValid ? amountNumber : 0)}</p>

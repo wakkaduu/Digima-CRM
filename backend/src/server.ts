@@ -13,5 +13,11 @@ const shutdown = async (signal: string) => {
         process.exit(0);
     });
 };
+// Last-resort logging: an error nothing caught still leaves a line to find, instead of a silent crash.
+process.on('unhandledRejection', (reason) => console.error('[fatal] unhandled promise rejection', reason));
+process.on('uncaughtException', (err) => {
+    console.error('[fatal] uncaught exception, exiting so the host restarts the process', err);
+    process.exit(1);
+});
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));

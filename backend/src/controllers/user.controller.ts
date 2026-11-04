@@ -6,6 +6,8 @@ import { createInvite } from '../services/invite.service';
 import { createUserSchema, updateUserSchema, userIdSchema } from '../validators/user.validator';
 import HttpError from '../utils/HttpError';
 import asyncHandler from '../utils/asyncHandler';
+import * as audit from '../services/audit';
+import * as auditModel from '../models/audit.model';
 
 // Account management (SuperAdmin only). A SuperAdmin adds a person and shares the one-time invite link; the person
 // links their Intuit identity by opening it and signing in with QuickBooks. The email is only a label.
@@ -49,6 +51,7 @@ export const create = asyncHandler(async (req, res) => {
         if (err.code === 'P2002') throw new HttpError(409, 'An account with that email already exists.'); // lost a race with the check above
         throw err;
     }
+    await auditModel.record(audit.invited(audit.actorOf(req.user), user));
     res.status(201).json({ user: toDto(user), inviteUrl: inviteUrl(invite.token), inviteExpiresAt: invite.expiresAt });
 });
 
@@ -61,6 +64,7 @@ export const reinvite = asyncHandler(async (req, res) => {
 
     const invite = createInvite();
     const user = await userModel.setInvite(id, invite.hash, invite.expiresAt);
+    await auditModel.record(audit.reinvited(audit.actorOf(req.user), user));
     res.json({ user: toDto(user), inviteUrl: inviteUrl(invite.token), inviteExpiresAt: invite.expiresAt });
 });
 
@@ -92,5 +96,6 @@ export const update = asyncHandler(async (req, res) => {
     const user = await userModel.update(id, patch);
     // A deactivated person loses their QuickBooks connection too, not just their session.
     if (patch.active === false) await qboTokenModel.remove(id);
+    await auditModel.record(audit.updated(audit.actorOf(req.user), target, user));
     res.json({ user: toDto(user) });
 });

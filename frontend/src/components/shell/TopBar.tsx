@@ -4,6 +4,7 @@ import type { User } from '../../api/types';
 import { cn } from '../../lib/cn';
 import { buttonClass } from '../ui/Button';
 import { CountChip } from '../ui/StatusBadge';
+import { PageTourButton } from '../tour/PageTourButton';
 
 /** Shortcut to what needs the user next: admins their review queue, sales their payment updates. */
 export function AlertsLink({ user, counts }: { user: User; counts: Record<'pending' | 'unseen', number> }) {
@@ -32,6 +33,7 @@ export function SearchButton({ onClick, className }: { onClick: () => void; clas
     <button
       type="button"
       onClick={onClick}
+      data-tour="search"
       aria-label="Search"
       aria-haspopup="dialog"
       className={cn('inline-flex min-h-(--control-h) min-w-(--control-h) items-center justify-center rounded-control text-text hover:bg-surface-sunk', className)}
@@ -49,6 +51,7 @@ export function TopBar({ user, counts, onSearch }: { user: User; counts: Record<
         <button
           type="button"
           onClick={onSearch}
+          data-tour="search"
           aria-haspopup="dialog"
           className="flex min-h-(--control-h) w-full max-w-md items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-left text-text-muted hover:bg-surface-sunk"
         >
@@ -57,6 +60,7 @@ export function TopBar({ user, counts, onSearch }: { user: User; counts: Record<
           <kbd className="rounded-control border border-border px-1.5 text-micro">Ctrl K</kbd>
         </button>
         <div className="ml-auto flex items-center gap-2">
+          <PageTourButton />
           <AlertsLink user={user} counts={counts} />
           {user.role === 'sales' && (
             <Link to="/payments/new" className={buttonClass({ variant: 'primary' })}>

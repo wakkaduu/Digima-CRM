@@ -109,6 +109,12 @@ model User {
   role               UserRole
   active             Boolean  @default(true)
   mustChangePassword Boolean  @default(true) @map("must_change_password")
+  // When they finished the product tour, or chose "Don't show this tour again". Null: offer it at their next sign-in.
+  tourCompletedAt    DateTime? @map("tour_completed_at")
+  // Page tours (a few tips the first time someone opens a page): the pages whose tour they finished, and whether they
+  // asked not to see page tours at all.
+  tourPagesDone      String[] @default([]) @map("tour_pages_done")
+  pageToursOff       Boolean  @default(false) @map("page_tours_off")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
@@ -118,4 +124,29 @@ model User {
   qboToken    QboToken?
 
   @@map("users")
+}
+
+// What people did in the portal, newest last: the SuperAdmin activity log. Append-only. No foreign keys on purpose:
+// an event outlives the payment or account it is about, and its `summary` is written at the time, so it still reads
+// correctly if a name or amount changes later.
+model AuditEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  at           DateTime @default(now())
+  actorId      String?  @map("actor_id") @db.Uuid
+  actorName    String   @map("actor_name")
+  actorRole    String?  @map("actor_role")
+  // e.g. payment.approved, payment.approve_failed, user.invited, auth.signed_in (see services/audit.ts)
+  action       String
+  // Did it work? Failed attempts (an approval QuickBooks refused) are logged too.
+  outcome      String   @default("ok")
+  paymentId    String?  @map("payment_id") @db.Uuid
+  targetUserId String?  @map("target_user_id") @db.Uuid
+  summary      String
+  details      Json?
+
+  @@index([at])
+  @@index([action, at])
+  @@index([actorId, at])
+  @@index([paymentId])
+  @@map("audit_events")
 }

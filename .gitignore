@@ -6,3 +6,4 @@ dist/
 frontend/dist/
 *.tsbuildinfo
 frontend/scripts/qa/shots/
+.taste-skill/

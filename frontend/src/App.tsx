@@ -24,6 +24,8 @@ const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'));
 const EstimatesPage = lazy(() => import('./pages/EstimatesPage'));
 const EstimateDetailPage = lazy(() => import('./pages/EstimateDetailPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const ActivityPage = lazy(() => import('./pages/ActivityPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
 
 /** Old URLs keep working: bookmarks, and the OAuth redirect URL that QuickBooks may still hold. */
 function Redirect({ to }: { to: (id?: string) => string }) {
@@ -71,10 +73,12 @@ export function App() {
         {/* Everyone has their own QuickBooks connection to check or renew. */}
         <Route element={<RequireAuth roles={['sales', 'admin', 'superadmin']} />}>
           <Route path="/settings/integrations" element={<SetupPage />} />
+          <Route path="/help" element={<HelpPage />} />
         </Route>
         {/* SuperAdmin: who may sign in, and as what. */}
         <Route element={<RequireAuth roles={['superadmin']} />}>
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/activity" element={<ActivityPage />} />
           <Route path="/settings/team" element={<TeamPage />} />
         </Route>
       </Routes>

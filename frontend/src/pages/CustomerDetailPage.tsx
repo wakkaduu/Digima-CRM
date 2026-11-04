@@ -90,12 +90,14 @@ export default function CustomerDetailPage() {
         description={<ActiveBadge active={c.active} />}
       />
 
-      <Tabs label="Customer sections" tabs={TABS} value={tab} onChange={(t) => set({ tab: t })} />
+      <div data-tour="p:customer.tabs">
+        <Tabs label="Customer sections" tabs={TABS} value={tab} onChange={(t) => set({ tab: t })} />
+      </div>
 
       <TabPanel>
         {tab === 'overview' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" data-tour="p:customer.figures">
               <StatTile label="Open estimates" icon={FileText} value={c.openEstimates} />
               <StatTile label="Paid to date" icon={CheckCircle2} value={peso(c.paidToDate)} note={c.pendingPayments > 0 ? `${c.pendingPayments} more awaiting review` : undefined} />
               <StatTile label="Outstanding" icon={Wallet} value={peso(c.outstanding)} note="Open balance in QuickBooks" />

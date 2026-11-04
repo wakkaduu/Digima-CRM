@@ -63,14 +63,14 @@ export function ExecutiveDashboard() {
         title="Overview"
         description={finding}
         actions={
-          <Link to="/settings/team" className={buttonClass({ variant: 'secondary' })}>
+          <Link to="/settings/team" data-tour="p:dashboard.team" className={buttonClass({ variant: 'secondary' })}>
             <UserCog aria-hidden className="size-4" /> Manage team
           </Link>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <section aria-label="Approved payments" className="min-w-0 rounded-card border border-border bg-surface p-5 lg:col-span-2">
+        <section aria-label="Approved payments" data-tour="p:dashboard.approved" className="min-w-0 rounded-card border border-border bg-surface p-5 lg:col-span-2">
           <header className="flex flex-wrap items-baseline justify-between gap-x-3">
             <h2 className="text-body font-semibold">Approved, last {WINDOW_DAYS} days</h2>
             {stats && <span className="text-small text-text-muted">{dayShort(stats.days[0]!.day)} – {dayShort(stats.days.at(-1)!.day)}</span>}
@@ -103,7 +103,7 @@ export function ExecutiveDashboard() {
           )}
         </section>
 
-        <Section title="Waiting for review">
+        <Section title="Waiting for review" tour="p:dashboard.waiting">
           {queue.isPending && <SkeletonRows label="Loading the review queue" count={QUEUE_ROWS} />}
           {queue.isError && <BlockError what="the queue" onRetry={() => void queue.refetch()} />}
           {queue.data && waitingTotal === 0 && <SectionEmpty>Nothing is waiting. New submissions will appear here.</SectionEmpty>}
@@ -123,7 +123,7 @@ export function ExecutiveDashboard() {
         </Section>
       </div>
 
-      <FigureStrip className="mt-4 lg:grid-cols-4">
+      <FigureStrip className="mt-4 lg:grid-cols-4" tour="p:dashboard.strip">
         <Figure
           label={`Reviewed, last ${WINDOW_DAYS} days`}
           loading={recent.isPending}

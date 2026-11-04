@@ -32,7 +32,7 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-tour="p:dashboard.tiles">
         <StatTile
           label="Awaiting review"
           icon={ClipboardCheck}
@@ -56,7 +56,7 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="min-w-0 space-y-4 lg:col-span-2">
-          <Section title="Needs your review" to="/payments/review" linkLabel="Open the queue">
+          <Section title="Needs your review" to="/payments/review" linkLabel="Open the queue" tour="p:dashboard.queue">
             {queue.isPending && <SkeletonRows label="Loading the review queue" count={4} />}
             {queue.isError && <SectionEmpty>Could not load the queue.</SectionEmpty>}
             {queue.data && pending.length === 0 && <SectionEmpty>Nothing is waiting. New submissions will appear here.</SectionEmpty>}
@@ -97,7 +97,7 @@ export function AdminDashboard() {
           </Section>
         </div>
 
-        <aside aria-label="QuickBooks connection" className="space-y-3 self-start rounded-card border border-border bg-surface p-4">
+        <aside aria-label="QuickBooks connection" data-tour="p:dashboard.qbo" className="space-y-3 self-start rounded-card border border-border bg-surface p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-body font-semibold">QuickBooks</h2>
             {q ? <StatusBadge status={qboOk ? 'connected' : 'disconnected'} label={qboOk ? 'Connected' : q.needsReauth ? 'Needs reconnecting' : 'Not connected'} /> : null}

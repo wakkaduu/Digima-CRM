@@ -5,6 +5,8 @@ import * as qboPayment from '../services/qboPayment.service';
 import { toListItem } from '../serializers/payment.serializer';
 import HttpError from '../utils/HttpError';
 import asyncHandler from '../utils/asyncHandler';
+import * as audit from '../services/audit';
+import * as auditModel from '../models/audit.model';
 
 const { toCents, fromCents } = qboPayment;
 
@@ -52,11 +54,18 @@ export const approve = asyncHandler(async (req, res) => {
             await paymentModel.update(id, { finalAmount: fromCents(finalCents).toFixed(2) });
         }
 
-        const result = await qboPayment.pushToQbo({
-            payment,
-            finalCents,
-            approver: req.user.name,
-        });
+        let result: Awaited<ReturnType<typeof qboPayment.pushToQbo>>;
+        try {
+            result = await qboPayment.pushToQbo({
+                payment,
+                finalCents,
+                approver: req.user.name,
+            });
+        } catch (err: any) {
+            // The attempt is logged too: "QuickBooks refused it" is exactly what the activity log is for.
+            await auditModel.record(audit.approveFailed(audit.actorOf(req.user), payment, { message: err.message, code: err.details?.code }));
+            throw err;
+        }
 
         const updated = await paymentModel.update(id, {
             status: 'approved',
@@ -69,6 +78,14 @@ export const approve = asyncHandler(async (req, res) => {
             qboInvoiceId: result.invoiceId,
             qboInvoiceNumber: result.invoiceNumber,
         });
+        await auditModel.record(
+            audit.approved(audit.actorOf(req.user), payment, {
+                finalAmount: fromCents(finalCents),
+                invoiceNumber: result.invoiceNumber,
+                invoiceCreated: result.invoiceCreated,
+                qboPaymentId: result.paymentId,
+            })
+        );
 
         res.json({
             payment: updated,
@@ -110,6 +127,7 @@ export const reject = asyncHandler(async (req, res) => {
         reviewedById: req.user.id,
     });
     if (!count) throw new HttpError(409, 'This payment was already processed.');
+    await auditModel.record(audit.rejected(audit.actorOf(req.user), payment, parsed.data.reason));
     res.json({ ok: true, undoUntil: new Date(now.getTime() + paymentModel.REJECT_UNDO_WINDOW_MS) });
 });
 
@@ -120,6 +138,8 @@ export const undoReject = asyncHandler(async (req, res) => {
     if (!count) {
         throw new HttpError(409, 'This rejection can no longer be undone.', { code: 'UNDO_NOT_AVAILABLE' });
     }
+    const payment = await paymentModel.findById(id);
+    if (payment) await auditModel.record(audit.rejectUndone(audit.actorOf(req.user), payment));
     res.json({ ok: true });
 });
 
@@ -139,10 +159,16 @@ export const voidPayment = asyncHandler(async (req, res) => {
             throw new HttpError(409, `Only an approved payment can be voided. This one is ${payment.status}.`);
         }
 
-        await qboPayment.voidInQbo(payment);
+        try {
+            await qboPayment.voidInQbo(payment);
+        } catch (err: any) {
+            await auditModel.record(audit.voidFailed(audit.actorOf(req.user), payment, { message: err.message, code: err.details?.code }));
+            throw err;
+        }
 
         const count = await paymentModel.voidIfApproved(id, { voidedBy: req.user.name, voidReason: parsed.data.reason });
         if (!count) throw new HttpError(409, 'This payment was already processed.');
+        await auditModel.record(audit.voided(audit.actorOf(req.user), payment, parsed.data.reason));
         res.json({ ok: true });
     } finally {
         inFlight.delete(id);

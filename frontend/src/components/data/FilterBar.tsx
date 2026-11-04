@@ -22,6 +22,8 @@ export interface FilterDef {
 }
 
 interface Props {
+  /** Marks the bar for a page tour (`data-tour`). */
+  tour?: string;
   search: { value: string; onChange: (v: string) => void; label: string; placeholder?: string };
   tabs?: { label: string; items: FilterTab[]; value: string; onChange: (id: string) => void };
   filters?: FilterDef[];
@@ -35,7 +37,7 @@ interface Props {
  * Search + status tabs + dropdown filters, with a chip per active filter and "Clear all".
  * Filters open inline from 1024px and in a bottom sheet on phones. The parent owns the values (see useUrlFilters).
  */
-export function FilterBar({ search, tabs, filters = [], onFilterChange, onClearAll, className }: Props) {
+export function FilterBar({ search, tabs, filters = [], onFilterChange, onClearAll, className, tour }: Props) {
   const desktop = useMediaQuery('(min-width: 1024px)');
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -63,7 +65,7 @@ export function FilterBar({ search, tabs, filters = [], onFilterChange, onClearA
   );
 
   return (
-    <div className={cn('mb-4 space-y-2', className)}>
+    <div data-tour={tour} className={cn('mb-4 space-y-2', className)}>
       <div className={cn('flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between', tabs && 'lg:border-b lg:border-border')}>
         {tabs && (
           <div role="group" aria-label={tabs.label} className="-mb-px flex gap-5 overflow-x-auto border-b border-border lg:border-b-0">

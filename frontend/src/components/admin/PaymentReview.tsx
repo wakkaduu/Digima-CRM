@@ -197,7 +197,9 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
         )}
 
         <div className="grid gap-4 lg:grid-cols-[1fr_minmax(0,22rem)]">
+          <div data-tour="p:review.receipt">
           <ReceiptViewer src={p.proofImageUrl} thumbSrc={p.thumbUrl} alt={`Receipt from ${p.customerName}`} />
+          </div>
 
           <div className="space-y-4">
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 [&_dt]:text-text-muted">
@@ -226,7 +228,7 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
               error={amountMessage}
             >
               {(aria) => (
-                <div className="flex gap-2">
+                <div className="flex gap-2" data-tour="p:review.amount">
                   <Input
                     id="final-amount"
                     inputMode="decimal"
@@ -253,7 +255,7 @@ export function PaymentReview({ payment: p, onDecided, actionsRef }: Props) {
             )}
 
             <StickyActionBar>
-              <div className="flex gap-2">
+              <div className="flex gap-2" data-tour="p:review.decide">
                 <Button variant="danger" onClick={startReject} disabled={busy} className="shrink-0">
                   <X aria-hidden className="size-4" /> Reject
                 </Button>

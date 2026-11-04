@@ -5,6 +5,8 @@ import { DataTable, type Column, type Sort } from './DataTable';
 import { Pagination } from './Pagination';
 
 interface Props<T> {
+  /** Marks the results for a page tour (`data-tour`). */
+  tour?: string;
   /** The rows of the current page, already filtered and sorted by the server. */
   rows: T[];
   total: number;
@@ -28,10 +30,10 @@ interface Props<T> {
  * Server-paged counterpart of ResultsView: the API sorts and pages, this only draws the page.
  * A sortable table with a pager from 1024px; tappable cards with the same pager on phones.
  */
-export function ServerResults<T>({ rows, total, page, pageSize, onPage, onPageSize, columns, getRowId, label, renderCard, onRowClick, sort, onSortChange, busy }: Props<T>) {
+export function ServerResults<T>({ rows, total, page, pageSize, onPage, onPageSize, columns, getRowId, label, renderCard, onRowClick, sort, onSortChange, busy, tour }: Props<T>) {
   const desktop = useMediaQuery('(min-width: 1024px)');
   return (
-    <div aria-busy={busy} className={busy ? 'opacity-60' : undefined}>
+    <div aria-busy={busy} data-tour={tour} className={busy ? 'opacity-60' : undefined}>
       {desktop ? (
         <DataTable columns={columns} rows={rows} getRowId={getRowId} caption={label} sort={sort} onSortChange={onSortChange} onRowClick={onRowClick} />
       ) : (

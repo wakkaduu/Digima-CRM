@@ -187,7 +187,7 @@ export default function TeamPage() {
         title="Team"
         description={summary}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2" data-tour="p:team.add">
             <Button onClick={() => setAddingMany(true)}>
               <Users aria-hidden className="size-4" /> Add several
             </Button>
@@ -206,7 +206,7 @@ export default function TeamPage() {
       {team.error && <ErrorState message={team.error.message} onRetry={() => team.refetch()} />}
 
       {team.data && (
-        <div className="overflow-hidden rounded-card border border-border bg-surface">
+        <div className="overflow-hidden rounded-card border border-border bg-surface" data-tour="p:team.list">
           <div aria-hidden className={`hidden border-b border-border px-4 py-2 text-small font-medium text-text-muted ${COLS}`}>
             <span>Person</span>
             <span>Role</span>
@@ -266,7 +266,7 @@ export default function TeamPage() {
       )}
 
       {people && (
-        <section aria-label="What each role can do" className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-card border border-border bg-border lg:grid-cols-3">
+        <section aria-label="What each role can do" data-tour="p:team.roles" className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-card border border-border bg-border lg:grid-cols-3">
           {ROLES.map((r) => (
             <div key={r.value} className="bg-surface p-4">
               <h2 className="font-semibold">

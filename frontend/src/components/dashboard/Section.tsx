@@ -12,6 +12,7 @@ export function Section({
   linkLabel = 'View all',
   meta,
   footer,
+  tour,
   children,
 }: {
   title: string;
@@ -20,10 +21,12 @@ export function Section({
   meta?: ReactNode;
   /** A total or an action, pinned to the foot when the block is stretched to its neighbour's height. */
   footer?: ReactNode;
+  /** Marks the block for a page tour (`data-tour`). */
+  tour?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col overflow-hidden rounded-card border border-border bg-surface" aria-label={title}>
+    <section className="flex flex-col overflow-hidden rounded-card border border-border bg-surface" aria-label={title} data-tour={tour}>
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-4">
         <h2 className="text-body font-semibold">{title}</h2>
         {meta && !to && <span className="text-small text-text-muted tabular-nums">{meta}</span>}

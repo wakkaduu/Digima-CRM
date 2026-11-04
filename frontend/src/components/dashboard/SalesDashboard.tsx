@@ -84,7 +84,7 @@ export function SalesDashboard() {
     <div>
       <PageHeader title="Dashboard" description={finding} />
 
-      <FigureStrip className="lg:grid-cols-4">
+      <FigureStrip className="lg:grid-cols-4" tour="p:dashboard.figures">
         <Figure
           lead
           label="Posted to QuickBooks"
@@ -146,7 +146,7 @@ export function SalesDashboard() {
             </Section>
           )}
 
-          <Section title="Recent payments" to="/payments">
+          <Section title="Recent payments" to="/payments" tour="p:dashboard.recent">
             {mine.isPending && <SkeletonRows label="Loading recent payments" count={RECENT_ROWS} />}
             {mine.isError && <SectionEmpty>Could not load your payments.</SectionEmpty>}
             {mine.data && payments.length === 0 && (
@@ -176,7 +176,7 @@ export function SalesDashboard() {
         </div>
 
         <div className="min-w-0 space-y-4">
-        <Section title="Left to collect" to="/estimates" linkLabel="All estimates">
+        <Section title="Left to collect" to="/estimates" linkLabel="All estimates" tour="p:dashboard.collect">
           {recents.isPending && <SkeletonRows label="Loading estimates" count={OWED_ROWS} />}
           {recents.isError && <SectionEmpty>Could not load your estimates.</SectionEmpty>}
           {recents.data && owed.length === 0 && <SectionEmpty>Estimates you submit payments for will appear here.</SectionEmpty>}

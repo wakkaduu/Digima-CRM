@@ -15,11 +15,18 @@ import configRoutes from './routes/config.routes';
 import { customerRoutes, estimateRoutes } from './routes/crm.routes';
 import reportRoutes from './routes/report.routes';
 import { maintenanceGate } from './middleware/maintenance';
+import { requestId } from './middleware/requestId';
+import opsRoutes from './routes/ops.routes';
+import activityRoutes from './routes/activity.routes';
 
 const app = express();
 const isProd = env.NODE_ENV === 'production';
 
 if (isProd) app.set('trust proxy', 1); // needed for secure cookies behind Render/Heroku/nginx
+
+app.use(requestId);
+// Private tool: no search engine should index anything the API returns.
+app.use((req, res, next) => (res.set('X-Robots-Tag', 'noindex, nofollow'), next()));
 
 app.use(
     helmet({
@@ -35,7 +42,9 @@ app.use(
     })
 );
 app.use(compression());
-app.use(morgan(isProd ? 'combined' : 'dev'));
+// Each access line carries the request id, so it lines up with the error lines for the same request.
+morgan.token('id', (req) => (req as express.Request).id);
+app.use(morgan(isProd ? ':id :remote-addr ":method :url" :status :res[content-length] :response-time ms ":user-agent"' : ':id :method :url :status :response-time ms'));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -55,7 +64,7 @@ app.use('/api/auth/invite', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }));
 app.use('/api/auth/qbo/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }));
 
 app.use(maintenanceGate({ enabled: env.MAINTENANCE_MODE, until: env.MAINTENANCE_UNTIL, message: env.MAINTENANCE_MESSAGE }));
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.use('/api', opsRoutes); // /api/health, /api/health/live, /api/client-errors
 app.use('/api/auth', authRoutes);
 app.use('/api/qbo', qboRoutes);
 app.use('/api/users', userRoutes);
@@ -64,6 +73,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/estimates', estimateRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/activity', activityRoutes);
 
 // JSON API only. The React app is served separately (Vite on :5173, which proxies /api here).
 app.use(notFound);

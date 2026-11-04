@@ -1,0 +1,3 @@
+# Digima CRM is a private internal tool. Nothing here should appear in search results.
+User-agent: *
+Disallow: /

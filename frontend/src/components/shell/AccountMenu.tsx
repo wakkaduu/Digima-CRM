@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ChevronUp, KeyRound, LogOut } from 'lucide-react';
+import { ChevronUp, Compass, KeyRound, LogOut } from 'lucide-react';
+import { startTour } from '../../lib/tour';
 import { useLogout } from '../../api/auth';
 import type { User } from '../../api/types';
 import { cn } from '../../lib/cn';
@@ -33,6 +34,16 @@ export function AccountActions({ user, onDone }: { user: User; onDone?: () => vo
   const navigate = useNavigate();
   return (
     <>
+      <button
+        type="button"
+        className={itemClass}
+        onClick={() => {
+          onDone?.();
+          startTour();
+        }}
+      >
+        <Compass aria-hidden className="size-4" /> Take the tour
+      </button>
       {user.hasPassword && (
         <Link to="/password" className={itemClass} onClick={onDone}>
           <KeyRound aria-hidden className="size-4" /> Change password

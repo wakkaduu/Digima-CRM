@@ -5,7 +5,7 @@ Internal payment automation portal: **Sales** submit payment proofs against Quic
 - **Stack:** Node ≥ 18.18, Express 4, TypeScript, Prisma (PostgreSQL), Zod, S3-compatible object storage (receipts), `intuit-oauth` (QBO)
 - **Base URL (dev):** `http://localhost:3000` — all routes are under `/api`
 - **Format:** JSON, except `POST /api/payments/submit` (multipart) and `GET /api/payments/:id/receipt` (image) and the QBO OAuth redirects
-- **Frontend:** served separately (Vite on `:5173`, proxies `/api` here)
+- **Frontend:** served separately (Vite on `:5173` in development, proxies `/api` here). In production the built frontend and this API must share one origin (see the root `README.md`).
 
 ---
 
@@ -14,12 +14,12 @@ Internal payment automation portal: **Sales** submit payment proofs against Quic
 1. [Conventions](#1-conventions)
 2. [Authentication & sessions](#2-authentication--sessions)
 3. [Endpoint summary](#3-endpoint-summary)
-4. [Health](#4-health)
+4. [Health, maintenance and monitoring](#4-health-maintenance-and-monitoring)
 5. [Auth endpoints](#5-auth-endpoints)
 6. [QuickBooks connection (admin)](#6-quickbooks-connection-admin)
 7. [QuickBooks estimates](#7-quickbooks-estimates)
 8. [Payments — Sales](#8-payments--sales) (8b history and detail, 8c [customers and estimates](#8c-customers-and-estimates-crm-modules))
-9. [Payments — Admin](#9-payments--admin)
+9. [Payments — Admin](#9-payments--admin) (9b [reports](#9b-reports--superadmin), 9c [activity log](#9c-activity-log--superadmin))
 10. [Error codes](#10-error-codes)
 11. [Data model](#11-data-model)
 12. [Configuration](#12-configuration)
@@ -34,14 +34,13 @@ Internal payment automation portal: **Sales** submit payment proofs against Quic
 Every error uses one shape:
 
 ```json
-{ "error": { "message": "Human-readable summary", "details": { "code": "DUPLICATE_REFERENCE" } } }
+{ "error": { "message": "Human-readable summary", "details": { "code": "DUPLICATE_REFERENCE" }, "requestId": "5f0c…" } }
 ```
 
 - `message` — safe to display. On `500` in production it is replaced with `"Internal server error"`.
 - `details` — optional. Either an object with a machine-readable `code` (see [Error codes](#10-error-codes)), a Zod field-error map (`{ "amount": ["..."] }`, only on `POST /payments/submit` validation failures), or QBO fault info on `502`.
+- `requestId` — the id of this request. Every response carries it in the `X-Request-Id` header too (a safe incoming `X-Request-Id` from a proxy is kept), and every access and error log line starts with it, so an id a user quotes finds the exact log lines.
 - Unknown routes return `404` with message `Route not found: <METHOD> <url>`.
-
-> There is no `requestId` in errors yet; correlate using server logs (morgan).
 
 ### Status codes used
 
@@ -54,8 +53,9 @@ Every error uses one shape:
 | 404 | Payment / receipt / estimate / route not found |
 | 409 | Conflict: duplicate payment, already processed, QBO not connected |
 | 422 | Business-rule violation (amounts, invalid receiver, rejected estimate) |
-| 429 | Sign-in rate limit exceeded |
+| 429 | Rate limit exceeded (sign-in, invites, client error reports) |
 | 502 | QuickBooks or receipt storage upstream failure |
+| 503 | Maintenance mode (`MAINTENANCE`), or `GET /api/health` when the database does not answer |
 
 ### Money and dates
 
@@ -65,7 +65,7 @@ Every error uses one shape:
 
 ### Request limits
 
-JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP allows images from `'self'`, `data:` and `blob:` only). Responses are gzip-compressed.
+JSON body ≤ 100 kb. Receipt upload ≤ 5 MB. Security headers via Helmet (CSP allows images from `'self'`, `data:` and `blob:` only). Every response also carries `X-Robots-Tag: noindex, nofollow` (the frontend adds a robots meta tag and a `robots.txt` that disallows everything). Responses are gzip-compressed.
 
 ---
 
@@ -93,8 +93,11 @@ Guards used below: **Public** (no auth), **Auth** (any signed-in user), **Sales*
 
 | Method | Path | Guard | Purpose |
 |---|---|---|---|
-| GET | `/api/health` | Public | Liveness check |
+| GET | `/api/health` | Public | Readiness: the process is up and the database answers |
+| GET | `/api/health/live` | Public | Liveness: the process is up (never touches the database) |
+| POST | `/api/client-errors` | Public (rate-limited) | A page crashed in a browser: logged for the team |
 | POST | `/api/auth/change-password` | Auth | Change your own password (legacy accounts only) |
+| POST | `/api/auth/tour` | Auth | The product tour was finished, or "Don't show this tour again" was ticked |
 | GET | `/api/auth/qbo/login` | Public | Start "Sign in with QuickBooks"; `?mode=connect` (signed in) connects your own QuickBooks (redirect) |
 | GET | `/api/auth/qbo/callback` | Public | Intuit redirects here; creates the session (redirect) |
 | POST | `/api/auth/logout` | Public | Sign out |
@@ -128,16 +131,42 @@ Guards used below: **Public** (no auth), **Auth** (any signed-in user), **Sales*
 | GET | `/api/estimates/:id/invoices` | Sales\|Admin | The estimate's QBO invoices: balance and paid |
 | GET | `/api/payments/qbo-accounts` | Admin\|SuperAdmin | List QBO accounts (setup helper) |
 | GET | `/api/reports` | SuperAdmin | Collections, accounts, sales reps and review turnaround over a date range |
+| GET | `/api/activity` | SuperAdmin | Activity log: who did what, newest first (filtered, paged) |
 
 ---
 
-## 4. Health
+## 4. Health, maintenance and monitoring
 
-### `GET /api/health`
-**200** `{ "ok": true }` — does not check the database or QBO. It keeps answering during maintenance, so the host still sees a live server.
+### `GET /api/health` — readiness
+Checks the database with `SELECT 1` (2-second timeout).
+
+**200** `{ "ok": true, "database": "up", "databaseMs": 3, "uptimeSeconds": 8123 }`
+**503** `{ "ok": false, "database": "down", "databaseMs": 2001, "uptimeSeconds": 8123 }` — the driver's error is written to the server log (`[health] <requestId> database down: …`), not returned.
+
+Point an **uptime monitor** here: it alerts when the portal cannot serve real requests. QuickBooks is deliberately not checked: an Intuit outage must not mark the portal down.
+
+### `GET /api/health/live` — liveness
+**200** `{ "ok": true }`, without touching the database. Use this for a host's **restart** check, so a database outage does not turn into a restart loop.
+
+Both health URLs keep answering during maintenance.
 
 ### Maintenance mode
 Set `MAINTENANCE_MODE=true` and restart: every other API call answers **503** `{ error: { message, details: { code: "MAINTENANCE", until, message } } }` with a `Retry-After` header, and the app shows a "Down for maintenance" page that checks again every 30 seconds and reloads itself once the portal answers normally. Optional: `MAINTENANCE_UNTIL` (ISO date-time with offset, e.g. `2026-11-05T15:00:00+08:00`) is shown as "back by 3:00 PM today", and `MAINTENANCE_MESSAGE` (one sentence, max 200 characters) is shown under it.
+
+### `POST /api/client-errors` — browser crash reports
+Public (a page can crash before sign-in), limited to 30 per 15 minutes per client. Body: `{ "message", "name"?, "stack"?, "path"?, "kind": "crash" | "stale-build" }`; fields are cut to 500 / 100 / 4000 / 300 characters. Always **204**. The frontend's error boundary sends one report per distinct crash, and the server logs it as `[client-error] <requestId> <kind> on <path> by <user (role) or signed-out visitor>: <name>: <message>`, followed by the stack. `stale-build` means a tab left open across a deploy could not load a page: expected after each release, not a bug.
+
+### What to watch in the logs
+| Prefix | Meaning |
+|---|---|
+| `[error]` | A request failed with a 5xx: `[error] <requestId> <METHOD> <url> -> <status>`, then the stack |
+| `[qbo]` | QuickBooks returned a fault (with Intuit's `intuit_tid` for Intuit support), or an invoice total differs from its estimate |
+| `[client-error]` | A page crashed in someone's browser |
+| `[health]` | The database did not answer the health check |
+| `[audit]` | An activity log entry could not be written (the action itself still went through) |
+| `[fatal]` | An unhandled error; on an uncaught exception the process exits so the host restarts it |
+
+In production each access line is `<requestId> <remote> "<METHOD> <url>" <status> <bytes> <ms> "<user agent>"`.
 
 ---
 
@@ -146,8 +175,15 @@ Set `MAINTENANCE_MODE=true` and restart: every other API call answers **503** `{
 ### `POST /api/auth/logout`
 **200** `{ "ok": true }`. Clears the session and deletes the user's stored QuickBooks tokens. Always succeeds.
 
+### `POST /api/auth/tour`
+Body: `{ "outcome": "finished" | "dismissed", "page"?: "dashboard" | "submit" | "my-payments" | "approvals" | "review" | "customers" | "customer" | "estimates" | "estimate" | "quickbooks" | "team" | "reports" | "activity" }`.
+
+**With `page`, a page tour** (a few tips the first time someone opens that page): `finished` adds the page to `users.tour_pages_done`; `dismissed` ("Don't show page tours again") sets `users.page_tours_off`, turning every page tour off. The reply is the updated user (as `GET /api/auth/me`), and `/me` returns `tourPagesDone` and `pageToursOff`. "Tour this page" in the top bar replays a page's tips at any time.
+
+**Without `page`, the welcome tour:** body `{ "outcome": "finished" | "dismissed" }`. **200** `{ "ok": true, "tourDone": true }`; **400** for any other outcome. Sets `users.tour_completed_at` (once), and from then on `GET /api/auth/me` returns `tourDone: true`, so the app stops offering the tour at sign-in on every device. Skipping without ticking "Don't show this tour again" calls nothing: the tour is offered again at the next sign-in (the app offers it once per sign-in, keyed on `signedInAt`). It can always be replayed from Help or the account menu.
+
 ### `GET /api/auth/me`
-**200** `{ "user": { "id": "uuid", "name": "Jane", "email": "jane@company.com", "role": "sales" } }` or `{ "user": null }` when not logged in or deactivated. Use at app start to restore the session.
+**200** `{ "user": { "id": "uuid", "name": "Jane", "email": "jane@company.com", "role": "sales", "hasPassword": false, "tourDone": false, "signedInAt": 1762230000000 } }` or `{ "user": null }` when not logged in or deactivated. Use at app start to restore the session. `signedInAt` is when this session's sign-in happened (ms, new at every sign-in; null for sessions started before it was recorded).
 
 ---
 
@@ -538,6 +574,42 @@ Money is in pesos (numbers). **Collected** counts approved payments by the day t
 
 ---
 
+## 9c. Activity log — SuperAdmin
+
+### `GET /api/activity?category=payments&actor=<uuid>&failed=true&from=2026-11-01&to=2026-11-04&page=1&pageSize=50` — SuperAdmin
+Every filter is optional. `category`: `payments` | `team` | `access` (sign-ins and QuickBooks connections). `actor`: an account id. `failed=true`: only failed attempts. `from` / `to`: Manila days, both included. `pageSize` 10–100 (default 50). Newest first.
+
+**200**
+```json
+{
+  "items": [{
+    "id": "uuid", "at": "2026-11-04T05:12:00.000Z",
+    "actorId": "uuid", "actorName": "Miguel Torres", "actorRole": "admin",
+    "action": "payment.approved", "outcome": "ok", "paymentId": "uuid", "targetUserId": null,
+    "summary": "Approved ₱23,200.00 from Cool Cars (estimate #1006); recorded on invoice #1043",
+    "details": { "estimateId": "160", "estimateNumber": "1006", "invoiceNumber": "1043", "invoiceCreated": false }
+  }],
+  "total": 132, "page": 1, "pageSize": 50
+}
+```
+
+| Action | Recorded when | Outcome |
+|---|---|---|
+| `payment.submitted` | A sales rep submits a payment | ok |
+| `payment.approved` | An admin approves (net amount, and the invoice it created or used) | ok |
+| `payment.approve_failed` | QuickBooks refused an approval (message and error code kept) | failed |
+| `payment.rejected` / `payment.reject_undone` | A rejection (with the reason) and its undo | ok |
+| `payment.voided` / `payment.void_failed` | A void (with the reason), or QuickBooks refusing it | ok / failed |
+| `user.invited` / `user.reinvited` | A person is added, or sent a new invite link | ok |
+| `user.updated` | Name, role or active changed (only what changed is listed) | ok |
+| `auth.signed_in` | A successful sign-in with QuickBooks | ok |
+| `auth.sign_in_refused` | A refused sign-in (not invited, deactivated, another company, …); no account | failed |
+| `qbo.connected` / `qbo.disconnected` | A person connects or disconnects their own QuickBooks | ok |
+
+`summary` is written when the event happens, so it still reads correctly after a name or amount changes. Writing an event never fails the action it describes: a failed write is logged as `[audit]` instead. Nothing before migration `20261105000000_audit_events` is in the log.
+
+---
+
 ## 10. Error codes
 
 Machine-readable values in `error.details.code`:
@@ -554,6 +626,11 @@ Machine-readable values in `error.details.code`:
 | `LAST_SUPERADMIN` | 409 | Would leave no active SuperAdmin | Tell the user |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Idempotency-Key already used for a different payment | Generate a new key |
 | `UNDO_NOT_AVAILABLE` | 409 | Window passed, not your rejection, or already posted | Tell the admin |
+| `INVOICE_CREATE_FAILED` | 409 | QuickBooks could not create the estimate's invoice on approval; nothing was recorded | Create the invoice in QuickBooks, then approve again |
+| `INVOICE_TOTAL_MISMATCH` | 409 | The portal's invoice totals differently from the estimate (usually tax); nothing was recorded | Correct the invoice or the estimate in QuickBooks, then approve again |
+| `INVOICE_PAID` | 409 | Every invoice for the estimate is already fully paid | Tell the admin |
+| `NO_INVOICE` | 409 | Older code for "no invoice to record against", kept for compatibility | Same as `INVOICE_CREATE_FAILED` |
+| `MAINTENANCE` | 503 | Maintenance mode is on; `details.until` and `details.message` are optional | Show the maintenance page |
 
 Other failures have no code; switch on HTTP status and show `message`.
 
@@ -563,12 +640,14 @@ Other failures have no code; switch on HTTP status and show `message`.
 
 PostgreSQL via Prisma (`prisma/schema.prisma`). Columns are snake_case in the DB.
 
-**`users`** — `id` UUID PK, `name`, `email` (unique), `role` (`sales`|`admin`|`superadmin`), `active` (default true), `qbo_sub` (unique; Intuit account id, set when an invite is accepted), `invite_token_hash` (unique, SHA-256 of the one-time link token) and `invite_expires_at`, timestamps. `email` is a label and is not used to match logins. Legacy columns `password_hash` (nullable) and `must_change_password` are no longer used.
+**`users`** — `id` UUID PK, `name`, `email` (unique), `role` (`sales`|`admin`|`superadmin`), `active` (default true), `qbo_sub` (unique; Intuit account id, set when an invite is accepted), `invite_token_hash` (unique, SHA-256 of the one-time link token) and `invite_expires_at`, timestamps. `email` is a label and is not used to match logins. `tour_completed_at` is when the person finished the welcome tour or asked not to see it again (null: it is offered at sign-in). `tour_pages_done` (text[]) lists the pages whose tour they finished, and `page_tours_off` is set when they asked not to see page tours. Legacy columns `password_hash` (nullable) and `must_change_password` are no longer used.
 
-**`payments`** — `id` UUID PK, `customer_name`, `qbo_customer_id`, `qbo_estimate_id`, `qbo_estimate_number`, `amount_submitted` Decimal(14,2), `final_amount` Decimal(14,2)?, `bank_deposited_to` enum (`BDO`, `UnionBank`, `Digima`, `Happy Med`, `Cash`), `reference_no`?, `received_on` DATE?, `received_by` (name snapshot), `received_by_id` → users, `submitted_by` (name snapshot), `submitted_by_id` → users, `proof_image_url`, `proof_public_id`, `status` (`pending`|`approved`|`rejected`|`voided`), `voided_at`, `voided_by`, `void_reason`, `qbo_payment_id` (**unique**, prevents double-posting), `qbo_deposit_id`, `approved_by`, `approved_at`, `rejection_reason`, `sales_seen_at`, `reviewed_by_id` → users (who approved/rejected; set from migration `20261016030000` on), `idempotency_key` (unique per submitter), `created_at`, `updated_at`.
+**`payments`** — `id` UUID PK, `customer_name`, `qbo_customer_id`, `qbo_estimate_id`, `qbo_estimate_number`, `amount_submitted` Decimal(14,2), `final_amount` Decimal(14,2)?, `bank_deposited_to` enum (`BDO`, `UnionBank`, `Digima`, `Happy Med`, `Cash`), `reference_no`?, `received_on` DATE?, `received_by` (name snapshot), `received_by_id` → users, `submitted_by` (name snapshot), `submitted_by_id` → users, `proof_image_url`, `proof_key` (S3 object key; set for every receipt stored in S3), `proof_public_id` (legacy, unused), `status` (`pending`|`approved`|`rejected`|`voided`), `voided_at`, `voided_by`, `void_reason`, `qbo_payment_id` (**unique**, prevents double-posting), `qbo_deposit_id`, `qbo_invoice_id` and `qbo_invoice_number` (the invoice the payment was recorded on, and the number people search for in QuickBooks), `approved_by`, `approved_at`, `rejection_reason`, `sales_seen_at`, `reviewed_by_id` → users (who approved/rejected; set from migration `20261016030000` on), `idempotency_key` (unique per submitter), `created_at`, `updated_at`.
 Indexes: `(submitted_by_id, status)`, `(received_by_id)`, `(status, created_at)`, `(qbo_estimate_id)`, `(bank_deposited_to, reference_no)`.
 
 **`qbo_tokens`** — one row per user (`user_id` PK → users, cascade delete; tokens are AES-256-GCM encrypted when `TOKEN_ENCRYPTION_KEY` is set): `realm_id`, access/refresh tokens and their expiry timestamps, `last_verified_at`. Restrict database access either way.
+
+**`audit_events`** — the activity log, append-only: `id` UUID PK, `at`, `actor_id` (no foreign key: an event outlives its account), `actor_name` and `actor_role` (snapshots), `action`, `outcome` (`ok`|`failed`), `payment_id`, `target_user_id`, `summary` (the sentence, written at the time), `details` JSONB. Indexes: `(at)`, `(action, at)`, `(actor_id, at)`, `(payment_id)`.
 
 ### Payment lifecycle
 
@@ -592,8 +671,11 @@ Environment variables are validated at boot (the process exits on failure). See 
 | `APP_BASE_URL` | yes | Public URL of this API; used to rebuild the OAuth callback URL |
 | `FRONTEND_URL` | no | default `http://localhost:5173`; QBO callback redirect target |
 | `DATABASE_URL` | yes | PostgreSQL connection string |
-| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | yes | Receipt storage |
-| `CLOUDINARY_FOLDER` | no | default `payment-proofs` |
+| `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | yes | Receipt storage: any S3-compatible object store, private bucket |
+| `S3_REGION` | no | default `us-east-1` |
+| `S3_FORCE_PATH_STYLE` | no | `true` (default) / `false` |
+| `S3_PREFIX` | no | key prefix, default `payment-proofs` |
+| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | no | Legacy only: reads receipts uploaded before the move to S3. Not needed once every payment has a `proof_key`. |
 | `QBO_CLIENT_ID` / `QBO_CLIENT_SECRET` | yes | Intuit app keys |
 | `QBO_ENVIRONMENT` | no | `sandbox` (default) / `production` |
 | `QBO_REDIRECT_URI` | yes | Must match the Intuit app, e.g. `…/api/auth/qbo/callback` |
@@ -606,6 +688,9 @@ Environment variables are validated at boot (the process exits on failure). See 
 | `SESSION_SECRET` | yes | ≥ 16 chars |
 | `ESTIMATE_LOOKBACK_DAYS` | no | ≥ 30, default 365 |
 | `DEFAULT_FEE_PERCENT` | no | 0–20, default 1.5; served by `/config/banks` |
+| `QBO_EXTRA_REALM_IDS` | no | Development only: more sandbox companies allowed to sign in (comma-separated). Refused in production. |
+| `MAINTENANCE_MODE` | no | `true` / `false` (default). See [maintenance mode](#maintenance-mode) |
+| `MAINTENANCE_UNTIL` / `MAINTENANCE_MESSAGE` | no | Shown on the maintenance page |
 
 ---
 
@@ -618,7 +703,8 @@ npm run prisma:deploy      # prod: apply existing migrations
 npm run dev                # tsx watch on src/server.ts
 npm run build && npm start # compile to dist/ and run
 npm run typecheck
-npm test                   # unit tests for validators, query building and serializers (no database needed)
+npm test                   # unit tests (no database or QuickBooks needed)
+npm run receipts:migrate   # one-off: copy any receipts still on Cloudinary to S3
 
 # Add an account from the shell and print its one-time invite link (SuperAdmins can also do this through POST /api/users)
 npm run user:create -- admin "Full Name" admin@company.com
@@ -629,11 +715,13 @@ npm run user:create -- sales "Full Name" rep@company.com
 - Behind a proxy in production (`trust proxy` = 1) so secure cookies work.
 - First-time setup: set `QBO_REALM_ID`, enable the OpenID scope (Email/Profile are not needed) and the redirect URI on the Intuit app → bootstrap the first SuperAdmin with `SUPERADMIN_QBO_SUB` (see Authentication) → the SuperAdmin adds the team and shares each person's invite link (`POST /api/users`) → an admin or the SuperAdmin uses `/payments/qbo-accounts` to fill the account env vars.
 
-### Known gaps (worth tracking)
+### Known limits
 
-- Set `TOKEN_ENCRYPTION_KEY`: without it the QuickBooks tokens in `qbo_tokens` are stored in plaintext.
-- `/payments/pending` is still unpaginated (fine for a review queue; history is paged via `GET /payments`). Paging is offset-based.
-- The audit trail is rebuilt from the payment row; a dedicated audit table would also capture partial-post attempts.
-- No OpenAPI document or request id in errors; no automated tests in the repo.
-- Approval lock is in-memory (single instance only).
-- QBO tokens stored unencrypted.
+- **One server process.** The approve/void lock and the per-estimate invoice lock live in memory, so two approvals of the same payment, or two first approvals on the same estimate, are only serialised within one process. Run a single instance, or add a database lock before scaling out. `qbo_payment_id` is unique and QuickBooks `requestid`s are set, so a race cannot double-post a payment, but it could create a second invoice.
+- **The pending queue is not paginated** (`GET /payments/pending`). Fine for a review queue; history is paged (offset-based) via `GET /payments`.
+- **A payment's own audit trail** (`events` in `GET /payments/:id`) is still rebuilt from the row. The full record, including failed attempts, is the activity log (`GET /api/activity`), which starts from the `audit_events` migration.
+- **Tax on auto-created invoices** has only been tested in a US sandbox company. The total check stops an approval whose invoice does not match its estimate, so a mismatch is caught rather than posted.
+- **`TOKEN_ENCRYPTION_KEY`**: set it in production; without it QuickBooks tokens are stored in plaintext.
+- **Health checks the database only**, not QuickBooks or S3, on purpose (see [Health](#4-health-maintenance-and-monitoring)).
+- **Monitoring is logs plus a health URL.** There is no hosted error tracker; alerts come from an uptime monitor on `/api/health` and from watching the log prefixes above.
+- **No OpenAPI document.** This file is the reference.

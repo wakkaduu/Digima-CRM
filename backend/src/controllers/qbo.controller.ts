@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import env from '../config/env';
 import { loadUser } from '../middleware/requireRole';
 import asyncHandler from '../utils/asyncHandler';
+import * as audit from '../services/audit';
+import * as auditModel from '../models/audit.model';
 import HttpError from '../utils/HttpError';
 import * as qbo from '../services/qbo.service';
 import * as qboAuth from '../services/qboAuth.service';
@@ -89,12 +91,17 @@ export const callback = asyncHandler(async (req, res) => {
             const current = await loadUser(req);
             if (!current || current.id !== connectUserId) return fail('sign_in_failed');
             await qboAuth.connect(params.data, current.id);
+            await auditModel.record(audit.qboConnected(audit.actorOf(current)));
             return res.redirect(`${env.FRONTEND_URL}${next || '/settings/integrations'}`);
         }
         const user = await qboAuth.signIn(params.data, inviteHash);
-        req.session = { user: { id: user.id, name: user.name, role: user.role } }; // a brand-new session
+        req.session = { user: { id: user.id, name: user.name, role: user.role }, signedInAt: Date.now() }; // a brand-new session
+        await auditModel.record(audit.signedIn(audit.actorOf(user)));
     } catch (err) {
-        if (err instanceof qboAuth.SignInError) return fail(err.code);
+        if (err instanceof qboAuth.SignInError) {
+            if (!connectUserId) await auditModel.record(audit.signInRefused(err.code));
+            return fail(err.code);
+        }
         throw err;
     }
     res.redirect(`${env.FRONTEND_URL}${next || '/'}`);
@@ -103,6 +110,7 @@ export const callback = asyncHandler(async (req, res) => {
 // POST /api/auth/qbo/disconnect   (signed in: removes their own QuickBooks connection and revokes it at Intuit)
 export const disconnect = asyncHandler(async (req, res) => {
     await qboAuth.disconnect(req.user.id);
+    await auditModel.record(audit.qboDisconnected(audit.actorOf(req.user)));
     res.json({ ok: true });
 });
 

@@ -5,6 +5,9 @@ import { useKeyboardOpen, useMediaQuery } from '../../lib/useMediaQuery';
 import { ShellContext } from './ShellContext';
 import { BrandLockup } from './BrandLockup';
 import { CommandPalette } from './CommandPalette';
+import { OfflineBanner } from './OfflineBanner';
+import { ProductTour } from '../tour/ProductTour';
+import { PageTourButton } from '../tour/PageTourButton';
 import { QboBanner } from './QboBanner';
 import { useNavCounts } from './nav';
 import { SIDEBAR_WIDTH, Sidebar, useSidebarCollapsed } from './Sidebar';
@@ -51,12 +54,15 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
           <BrandLockup />
           <div className="flex items-center">
+            <PageTourButton compact />
             <SearchButton onClick={() => setSearchOpen(true)} />
             <AlertsLink user={user} counts={counts} />
           </div>
         </header>
       )}
       {desktop && <TopBar user={user} counts={counts} onSearch={() => setSearchOpen(true)} />}
+      <ProductTour user={user} />
+      <OfflineBanner />
       <QboBanner />
       <main
         id="content"

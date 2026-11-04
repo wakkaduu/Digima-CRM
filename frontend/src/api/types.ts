@@ -10,6 +10,14 @@ export interface User {
   role: Role;
   /** Can sign in with email and password (and so change it). */
   hasPassword: boolean;
+  /** Finished the product tour or asked not to see it again: it is no longer offered at sign-in. */
+  tourDone?: boolean;
+  /** When this sign-in happened (ms): a new value at every sign-in. Null for a session started before it was recorded. */
+  signedInAt?: number | null;
+  /** Pages whose tour they finished. */
+  tourPagesDone?: string[];
+  /** They ticked "Don't show page tours again". */
+  pageToursOff?: boolean;
 }
 
 /** A row from GET /api/users (SuperAdmin account management). */
@@ -265,4 +273,21 @@ export interface Report {
       oldest: { id: string; customerName: string; submittedBy: string; amount: number; createdAt: string; waitingMinutes: number }[];
     };
   };
+}
+
+export type ActivityCategory = 'payments' | 'team' | 'access';
+
+/** One row of GET /api/activity: who did what, written as a sentence at the time it happened. */
+export interface ActivityEvent {
+  id: string;
+  at: string;
+  actorId: string | null;
+  actorName: string;
+  actorRole: Role | null;
+  action: string;
+  outcome: 'ok' | 'failed';
+  paymentId: string | null;
+  targetUserId: string | null;
+  summary: string;
+  details: { estimateId?: string; estimateNumber?: string | null; code?: string | null; [key: string]: unknown } | null;
 }

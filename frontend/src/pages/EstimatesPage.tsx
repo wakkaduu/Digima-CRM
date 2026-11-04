@@ -105,6 +105,7 @@ export default function EstimatesPage() {
       />
 
       <FilterBar
+        tour="p:estimates.filters"
         tabs={{
           label: 'Filter by status',
           value: tab,
@@ -130,6 +131,7 @@ export default function EstimatesPage() {
       )}
       {data && data.total > 0 && (
         <ServerResults
+          tour="p:estimates.results"
           rows={data.items}
           total={data.total}
           page={page}

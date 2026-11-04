@@ -38,6 +38,23 @@ describe('ErrorPage', () => {
     expect(screen.getByText('All good')).toBeInTheDocument();
   });
 
+  it('reports the crash to the server log, once, without bothering the person', () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+    function Reported(): ReactNode {
+      throw new Error('reported crash'); // its own message: each distinct crash is reported once per page load
+    }
+    renderWithProviders(
+      <ErrorBoundary fallback={(err) => <ErrorPage error={err} />}>
+        <Reported />
+      </ErrorBoundary>,
+    );
+    const reports = fetchMock.mock.calls.filter(([url]) => url === '/api/client-errors');
+    expect(reports).toHaveLength(1);
+    expect(JSON.parse(String(reports[0]![1]!.body))).toMatchObject({ kind: 'crash', name: 'Error', message: 'reported crash', path: '/' });
+    vi.unstubAllGlobals();
+  });
+
   it('treats a page that cannot load after a deploy as an update, not a bug', () => {
     const err = new TypeError('Failed to fetch dynamically imported module: /assets/ReportsPage-abc.js');
     expect(isStaleBuild(err)).toBe(true);

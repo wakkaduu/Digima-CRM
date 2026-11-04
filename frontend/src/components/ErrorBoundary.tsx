@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportClientError } from '../lib/reportError';
+import { isStaleBuild } from '../pages/ErrorPage';
 
 interface Props {
   fallback: (error: Error, reset: () => void) => ReactNode;
@@ -17,6 +19,7 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Screen crashed', error, info.componentStack);
+    reportClientError(error, isStaleBuild(error) ? 'stale-build' : 'crash');
   }
 
   componentDidUpdate(prev: Props) {

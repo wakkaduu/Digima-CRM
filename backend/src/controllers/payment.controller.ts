@@ -13,6 +13,8 @@ import { receiptUrls, toDetail, toListItem } from '../serializers/payment.serial
 import { dataScope } from '../config/roles';
 import * as qbo from '../services/qbo.service';
 import * as cloud from '../services/cloudinary.service';
+import * as audit from '../services/audit';
+import * as auditModel from '../models/audit.model';
 import * as storage from '../services/storage.service';
 import { resizedPublicUrl } from '../utils/receiptUrl';
 import HttpError from '../utils/HttpError';
@@ -111,6 +113,16 @@ export const submit = asyncHandler(async (req, res) => {
             idempotencyKey,
             status: 'pending',
         });
+        await auditModel.record(
+            audit.submitted(audit.actorOf(req.user), {
+                id: payment.id,
+                customerName: estimate.customerName || 'Unknown customer',
+                qboEstimateId: estimateId,
+                qboEstimateNumber: estimate.docNumber || null,
+                amountSubmitted: amount,
+                bankDepositedTo: BANK_MAP[bank],
+            })
+        );
         res.status(201).json({ payment });
     } catch (err) {
         await storage.deleteReceipt(image.key);

@@ -86,7 +86,7 @@ export default function ReportsPage() {
           <Accounts report={data} />
 
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="min-w-0 lg:col-span-2 [&>section]:h-full">
+            <div className="min-w-0 lg:col-span-2 [&>section]:h-full" data-tour="p:reports.reps">
               <Reps report={data} />
             </div>
             <div className="min-w-0 [&>section]:h-full">
@@ -144,7 +144,7 @@ function RangeBar({
 }) {
   const problemId = useId();
   return (
-    <div className="mb-4 space-y-3">
+    <div className="mb-4 space-y-3" data-tour="p:reports.range">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented label="Period" value={preset} options={PRESETS.map((p) => ({ id: p.id, label: p.label }))} onChange={(id) => onPreset(id as PresetId)} />
         <div className="flex items-center gap-3">
@@ -232,7 +232,7 @@ function Segmented({
 function Collections({ report }: { report?: Report }) {
   const c = report?.collections;
   return (
-    <section aria-label="Collected" className="min-w-0 rounded-card border border-border bg-surface p-5 lg:col-span-2">
+    <section aria-label="Collected" data-tour="p:reports.collected" className="min-w-0 rounded-card border border-border bg-surface p-5 lg:col-span-2">
       <header className="flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 className="text-body font-semibold">Collected</h2>
         {report && <span className="text-small text-text-muted">{rangeLabel(report.range.from, report.range.to)}</span>}
@@ -342,7 +342,7 @@ function Accounts({ report }: { report?: Report }) {
   const total = report?.collections.net ?? 0;
   const lead = report?.banks.reduce((a, b) => (b.net > a.net ? b : a), report.banks[0]!);
   return (
-    <section aria-label="Collected by account" className="mt-4">
+    <section aria-label="Collected by account" data-tour="p:reports.accounts" className="mt-4">
       <h2 className="mb-2 text-body font-semibold">Collected by account</h2>
       <FigureStrip className="sm:grid-cols-3 lg:grid-cols-5 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         {(report?.banks ?? Array.from({ length: 5 }, (_, i) => ({ bank: String(i), count: 0, gross: 0, fees: 0, net: 0 }))).map((b) => (

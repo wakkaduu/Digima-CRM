@@ -9,6 +9,8 @@ const router = Router();
 router.post('/logout', ctrl.logout);
 router.get('/me', ctrl.me);
 router.post('/change-password', requireAuth, ctrl.changePassword);
+// The product tour: finished, or "don't show it again"
+router.post('/tour', requireAuth, ctrl.tour);
 
 // One-time invite links: opening one remembers it for this browser, and the next QuickBooks sign-in claims it
 router.post('/invite', ctrl.acceptInvite);

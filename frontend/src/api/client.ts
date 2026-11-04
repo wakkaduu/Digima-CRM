@@ -3,12 +3,15 @@ import { reportMaintenance } from '../lib/maintenance';
 export class ApiError extends Error {
   status: number;
   code?: string;
+  /** The server's id for the failed request: quote it to whoever reads the logs. */
+  requestId?: string;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, requestId?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.requestId = requestId;
   }
 }
 
@@ -32,7 +35,7 @@ export async function api<T>(path: string, options: RequestInit & { json?: unkno
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 503 && data?.error?.details?.code === 'MAINTENANCE') reportMaintenance(data.error.details);
-    throw new ApiError(data?.error?.message || res.statusText, res.status, data?.error?.details?.code);
+    throw new ApiError(data?.error?.message || res.statusText, res.status, data?.error?.details?.code, data?.error?.requestId);
   }
   return data as T;
 }
@@ -96,7 +99,7 @@ export function apiUpload<T>(
       const data = xhr.response ?? {};
       if (xhr.status >= 200 && xhr.status < 300) return resolve(data as T);
       if (xhr.status === 503 && data?.error?.details?.code === 'MAINTENANCE') reportMaintenance(data.error.details);
-      reject(new ApiError(data?.error?.message || xhr.statusText, xhr.status, data?.error?.details?.code));
+      reject(new ApiError(data?.error?.message || xhr.statusText, xhr.status, data?.error?.details?.code, data?.error?.requestId));
     };
     xhr.onerror = () => fail(LOST, 'NETWORK');
     xhr.ontimeout = () => fail('The upload took too long. Check your signal and tap Retry.', 'TIMEOUT');

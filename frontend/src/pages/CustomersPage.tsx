@@ -104,6 +104,7 @@ export default function CustomersPage() {
       />
 
       <FilterBar
+        tour="p:customers.filters"
         tabs={{
           label: 'Filter by status',
           value: tab,
@@ -129,6 +130,7 @@ export default function CustomersPage() {
       )}
       {data && data.total > 0 && (
         <ServerResults
+          tour="p:customers.results"
           rows={data.items}
           total={data.total}
           page={page}

@@ -192,7 +192,7 @@ export function MyPaymentsPage() {
       />
 
       {all.length > 0 && (
-        <FigureStrip className="mb-4 grid-cols-1 sm:grid-cols-3">
+        <FigureStrip className="mb-4 grid-cols-1 sm:grid-cols-3" tour="p:my-payments.figures">
           <Figure label="Waiting for review" to="/payments?tab=pending" value={peso(sums.pending)} note={`${counts.pending} ${counts.pending === 1 ? 'payment' : 'payments'}`} />
           <Figure label="Approved" to="/payments?tab=approved" value={peso(sums.approved)} note={`${counts.approved} ${counts.approved === 1 ? 'payment' : 'payments'} posted`} />
           <Figure
@@ -207,6 +207,7 @@ export function MyPaymentsPage() {
 
       {all.length > 0 && (
         <FilterBar
+          tour="p:my-payments.filters"
           tabs={{ label: 'Filter by status', value: tab, onChange: (id) => set({ tab: id }), items: TABS.map((t) => ({ ...t, count: counts[t.id] })) }}
           search={{ label: 'Search by customer or estimate number', placeholder: 'Search payments', value: f.q, onChange: (v) => set({ q: v }) }}
           filters={[{ id: 'bank', label: 'Paid via', allLabel: 'All banks', value: f.bank, options: banks.map((b) => ({ value: b, label: bankLabel(b) })) }]}
@@ -245,6 +246,7 @@ export function MyPaymentsPage() {
       )}
 
       {rows.length > 0 && (
+        <div data-tour="p:my-payments.list">
         <ResultsView
           rows={rows}
           columns={COLUMNS}
@@ -277,6 +279,7 @@ export function MyPaymentsPage() {
             />
           )}
         />
+        </div>
       )}
 
       <Dialog open={!!open} onClose={() => setOpenId(null)} title={open ? `Estimate #${estimateOf(open)}` : 'Payment'}>

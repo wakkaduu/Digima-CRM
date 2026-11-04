@@ -46,9 +46,13 @@ export function ErrorPage({ error, onRetry, fullPage = false }: { error: Error; 
       {!stale && (
         <details className="mt-8 rounded-card bg-surface-sunk px-4 py-3 text-small">
           <summary className="min-h-6 cursor-pointer text-text-muted">If it keeps happening</summary>
-          <p className="mt-2 text-text-muted">Tell your admin what you were doing, and send them these details:</p>
-          <p className="mt-2 break-words text-text">
+          <p className="mt-2 text-text-muted">
+            This error was reported to the team automatically. If it keeps happening, tell your admin what you were doing and send
+            them these details:
+          </p>
+          <p className="mt-2 wrap-break-word text-text">
             {at} · {window.location.pathname}
+            {'requestId' in error && typeof error.requestId === 'string' && <> · ref {error.requestId}</>}
             <br />
             {error.name}: {error.message}
           </p>
